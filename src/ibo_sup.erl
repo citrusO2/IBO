@@ -1,27 +1,33 @@
+%%%-------------------------------------------------------------------
+%%% @author Florian
+%%% @copyright (C) 2015, <COMPANY>
+%%% @doc
+%%%
+%%% @end
+%%% Created : 13. Nov 2015 22:47
+%%%-------------------------------------------------------------------
 -module(ibo_sup).
+-author("Florian").
 
+%% supervisor --------------------------------------------------------
 -behaviour(supervisor).
-
-%% API
--export([start_link/0]).
-
-%% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
-
-%% ===================================================================
-%% API functions
-%% ===================================================================
+%% API ---------------------------------------------------------------
+-export([start_link/0]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+%% Helper macro for declaring children of supervisor -----------------
+-define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
-
 init([]) ->
     {ok, { {one_for_one, 5, 10}, []} }.
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
