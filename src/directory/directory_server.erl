@@ -20,10 +20,13 @@
 -spec get_user(nonempty_string()) -> #ibo_user{}.
 
 %% API ---------------------------------------------------------------
--export([start_link/0, get_user/1]).
+-export([start_link/0, stop/0, get_user/1]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+stop() ->
+    gen_server:call(?MODULE, stop).
 
 get_user(Username) ->
     gen_server:call(?MODULE, {get_user, Username}).
@@ -38,8 +41,12 @@ init([]) ->
     process_flag(trap_exit, true),
     io:format("~p starting~n", [?MODULE]),
     {ok, 0}.
+
 handle_call({get_user, Username}, _From, N) ->
-    {reply, read_transactional(ibo_user,Username), N + 1}.
+    {reply, read_transactional(ibo_user, Username), N + 1};
+handle_call(stop, _From, N) ->
+    {stop, normal, stopped, N}.
+
 handle_cast(_Msg, N) -> {noreply, N}.
 handle_info(_Info, N) -> {noreply, N}.
 terminate(_Reason, _N) ->
@@ -52,8 +59,12 @@ code_change(_OldVsn, N, _Extra) -> {ok, N}.
 %%%===================================================================
 %%do(qlc:q([X || X <- mnesia:table(ibo_directory), X#user.username =:= Username])).
 
-read_transactional(Table,Key) ->
-    F = fun() ->
-        mnesia:read(Table,Key)
-        end,
-    mnesia:transaction(F).
+read_transactional(Table, Key) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:read(Table, Key)
+        end),
+    case Res of
+        {atomic, [Record]}-> Record;
+        _ -> Res
+    end.
