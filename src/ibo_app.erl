@@ -31,7 +31,7 @@ install(Nodes) ->
 %% Application callbacks
 %% ===================================================================
 start(_StartType, _StartArgs) ->
-    mnesia:wait_for_tables([ibo_directory],5000),
+    mnesia:wait_for_tables([ibo_user],5000),
     ibo_sup:start_link().
 
 stop(_State) ->
