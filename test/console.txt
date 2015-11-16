@@ -1,0 +1,16 @@
+rebar compile
+erl
+
+cd("ebin"),
+ibo_app:install([node()]),
+mnesia:start(),
+directory_server:start_link(),
+
+rd(ibo_user, {username, firstname, lastname,groups = []}),
+Row = #ibo_user{username="ff",firstname="Fabian",lastname="Froelich"},
+F = fun() ->
+        mnesia:write(Row)
+        end,
+mnesia:transaction(F),
+
+directory_server:get_user("ff").
