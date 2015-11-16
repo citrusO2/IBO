@@ -9,5 +9,4 @@ rel/example_project
 .concrete/DEV_MODE
 .rebar
 .idea/
-IBO.iml
-Mnesia.nonode@nohost
+logs
