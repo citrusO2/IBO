@@ -35,12 +35,9 @@ get_user(Username) ->
 %%% gen_server callbacks
 %%%===================================================================
 init([]) ->
-    %% Note we must set trap_exit = true if we
-    %% want terminate/2 to be called when the application
-    %% is stopped
-    process_flag(trap_exit, true),
+    process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     io:format("~p starting~n", [?MODULE]),
-    {ok, 0}.
+    {ok, 0}. % 0 = initial state
 
 handle_call({get_user, Username}, _From, N) ->
     {reply, read_transactional(ibo_user, Username), N + 1};
