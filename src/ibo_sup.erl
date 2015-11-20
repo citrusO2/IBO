@@ -26,7 +26,9 @@ start_link() ->
 %% Supervisor callbacks
 %% ===================================================================
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    {ok, { {one_for_one, 5, 10}, [
+        ?CHILD(directory_server, worker)
+    ]} }.
 
 %%%===================================================================
 %%% Internal functions

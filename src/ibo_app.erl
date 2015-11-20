@@ -25,6 +25,10 @@ install(Nodes) ->
         [{attributes, record_info(fields, ibo_user)},
             {disc_copies, Nodes},
             {type, set}]),
+    mnesia:create_table(ibo_group,
+        [{attributes, record_info(fields, ibo_group)},
+            {disc_copies, Nodes},
+            {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]).
 
 %% ===================================================================
