@@ -16,7 +16,7 @@
 -export([start/2, stop/1]).
 
 %% API ---------------------------------------------------------------
--export([install/1]).
+-export([install/1, start_dependencies/0]).
 
 install(Nodes) ->
     ok = mnesia:create_schema(Nodes),
@@ -30,6 +30,12 @@ install(Nodes) ->
             {disc_copies, Nodes},
             {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]).
+
+start_dependencies() ->
+    ok = application:start(crypto),
+    ok = application:start(ranch),
+    ok = application:start(cowlib),
+    ok = application:start(cowboy).
 
 %% ===================================================================
 %% Application callbacks
