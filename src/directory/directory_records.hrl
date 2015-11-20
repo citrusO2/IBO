@@ -16,3 +16,8 @@
     lastname :: nonempty_string(),
     groups = [] :: nonempty_list(nonempty_string())}).
 
+-record(ibo_group, {
+    groupname :: nonempty_string(),
+    groupdescription :: nonempty_string(),
+    parent :: string()
+}).

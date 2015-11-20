@@ -10,24 +10,27 @@
 -author("Florian").
 
 -include("../src/directory/directory_records.hrl").
--define(USER,#ibo_user{username="ff",firstname="Fabian",lastname="Froelich"}).
--define(NEWUSER,#ibo_user{username="dd",firstname="Doris",lastname="Dührwald"}).
-
+-define(USER, #ibo_user{username = "ff", firstname = "Fabian", lastname = "Froelich"}).
+-define(NEWUSER, #ibo_user{username = "dd", firstname = "Doris", lastname = "Dührwald"}).
+-define(GROUP, #ibo_group{groupname = "ACME_Corporation", groupdescription = "This should be the root group"}).
+-define(NEWGROUP, #ibo_group{groupname = "Marketing", groupdescription = "Group for the Unit Marketing", parent = "ACME_Corporation"}).
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([get_user_test/1,
-    get_user_fail_test/1,
-    write_user_test/1,
-    write_user_fail_test/1,
-    search_user_test/1]).
+-export([get_user_test/1, get_user_fail_test/1,
+    write_user_test/1, write_user_fail_test/1,
+    search_user_test/1,
+    get_group_test/1, get_group_fail_test/1,
+    write_group_test/1, write_group_fail_test/1,
+    search_group_test/1]).
 
-all() -> [get_user_test,
-    get_user_fail_test,
-    write_user_test,
-    write_user_fail_test,
-    search_user_test].
+all() -> [get_user_test, get_user_fail_test,
+    write_user_test, write_user_fail_test,
+    search_user_test,
+    get_group_test, get_group_fail_test,
+    write_group_test, write_group_fail_test,
+    search_group_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -37,84 +40,142 @@ init_per_suite(Config) ->
         [{attributes, record_info(fields, ibo_user)},
             {disc_copies, Nodes},
             {type, set}]),
+    mnesia:create_table(ibo_group,
+        [{attributes, record_info(fields, ibo_group)},
+            {disc_copies, Nodes},
+            {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     mnesia:start(),
-    mnesia:wait_for_tables([ibo_user],5000),
+    mnesia:wait_for_tables([ibo_user], 5000),
     Config.
 
 end_per_suite(_Config) ->
     mnesia:delete_table(ibo_user),
+    mnesia:delete_table(ibo_group),
     mnesia:stop().
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     directory_server:start_link(),
-    add_user_to_mnesia(?USER),
+    add_record_to_mnesia(?USER),
+    add_record_to_mnesia(?GROUP),
     Config.
 
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_user),
+    mnesia:clear_table(ibo_group),
     directory_server:stop().
 
 %%%===================================================================
-%%% Tests
+%%% User Tests
 %%%===================================================================
 get_user_test(_Config) ->
-    User1 = ?USER,
-    User2 = directory_server:get_user(User1#ibo_user.username),
-    io:format("User1: ~p~n",[User1]),
-    io:format("User2: ~p~n",[User2]),
-    true = User1 =:= User2,
+    Record1 = ?USER,
+    Record2 = directory_server:get_user(Record1#ibo_user.username),
+    print_var("Record1", Record1),
+    print_var("Record2", Record2),
+    true = Record1 =:= Record2,
     ok.
 
 get_user_fail_test(_Config) ->
     Out = directory_server:get_user("MiauMiau"),
-    io:format("Out: ~p~n",[Out]),
+    print_var("Out", Out),
     true = Out =:= not_found,
     ok.
 
 write_user_test(_Config) ->
-    NewUser = ?NEWUSER,
-    ok = directory_server:write_user(NewUser),
-    DbUser = directory_server:get_user(NewUser#ibo_user.username),
-    true = NewUser =:= DbUser,
+    Record1 = ?NEWUSER,
+    ok = directory_server:write_user(Record1),
+    Record2 = directory_server:get_user(Record1#ibo_user.username),
+    true = Record1 =:= Record2,
     ok.
 
 write_user_fail_test(_Config) ->
-    Out = directory_server:write_user({"Crazy","NotUsed","Wrong Record"}),
-    io:format("Out: ~p~n",[Out]),
+    Out = directory_server:write_user({"Crazy", "NotUsed", "Wrong Record"}),
+    print_var("Out", Out),
     {error, _} = Out,
     ok.
 
 search_user_test(_Config) ->
-    User1 = ?USER,
-    [User2] = directory_server:search_user("Froe"),
+    Record1 = ?USER,
+    [Record2] = directory_server:search_user("Froe"),
     [] = directory_server:search_user("Dühr"),
-    io:format("User1: ~p~n",[User1]),
-    io:format("User2: ~p~n",[User2]),
-    true = User1 =:= User2,
+    print_var("Record1", Record1),
+    print_var("Record2", Record2),
+    true = Record1 =:= Record2,
 
-    add_user_to_mnesia(?NEWUSER),
-    [User3] = directory_server:search_user("Dühr"),
-    true = User3 =:= ?NEWUSER,
-    2 = length(directory_server:search_user("r")),
+    add_record_to_mnesia(?NEWUSER),
+    [Record3] = directory_server:search_user("Dühr"),
+    true = Record3 =:= ?NEWUSER,
+    2 = length(directory_server:search_user("")),
 
-    remove_user_from_mnesia(User1),
-    [User3] = directory_server:search_user("r"),
+    remove_record_from_mnesia(Record1),
+    [Record3] = directory_server:search_user("r"),
+    ok.
+
+%%%===================================================================
+%%% Group Tests
+%%%===================================================================
+get_group_test(_Config) ->
+    Record1 = ?GROUP,
+    Record2 = directory_server:get_group(Record1#ibo_group.groupname),
+    print_var("Record1", Record1),
+    print_var("Record2", Record2),
+    true = Record1 =:= Record2,
+    ok.
+
+get_group_fail_test(_Config) ->
+    Out = directory_server:get_group("MiauMiau"),
+    print_var("Out", Out),
+    true = Out =:= not_found,
+    ok.
+
+write_group_test(_Config) ->
+    Record1 = ?NEWGROUP,
+    ok = directory_server:write_group(Record1),
+    Record2 = directory_server:get_group(Record1#ibo_group.groupname),
+    true = Record1 =:= Record2,
+    ok.
+
+write_group_fail_test(_Config) ->
+    Out = directory_server:write_group({"Crazy", "NotUsed", "Wrong Record"}),
+    print_var("Out", Out),
+    {error, _} = Out,
+    ok.
+
+search_group_test(_Config) ->
+    Record1 = ?GROUP,
+    [Record2] = directory_server:search_group("ACME"),
+    [] = directory_server:search_group("Mark"),
+    print_var("Record1", Record1),
+    print_var("Record2", Record2),
+    true = Record1 =:= Record2,
+
+    add_record_to_mnesia(?NEWGROUP),
+    [Record3] = directory_server:search_group("Mark"),
+    true = Record3 =:= ?NEWGROUP,
+    2 = length(directory_server:search_group("")),
+
+    remove_record_from_mnesia(Record1),
+    [Record3] = directory_server:search_group("r"),
     ok.
 
 %%%===================================================================
 %%% Helper functions
 %%%===================================================================
-add_user_to_mnesia(User)->
+add_record_to_mnesia(Record) ->
     F = fun() ->
-        mnesia:write(User)
+        mnesia:write(Record)
         end,
-    {atomic,ok} = mnesia:transaction(F),
+    {atomic, ok} = mnesia:transaction(F),
     ok.
 
-remove_user_from_mnesia(User)->
+remove_record_from_mnesia(Record) ->
     F = fun() ->
-        mnesia:delete({element(1,User),User#ibo_user.username})
+        mnesia:delete({element(1, Record), element(2, Record)})
         end,
-    {atomic,ok} = mnesia:transaction(F),
+    {atomic, ok} = mnesia:transaction(F),
+    ok.
+
+print_var(Var, VarName) ->
+    io:format("~p: ~p~n", [VarName, Var]),
     ok.

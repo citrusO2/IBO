@@ -22,7 +22,9 @@
 -spec write_user(#ibo_user{}) -> ok | any().
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, get_user/1, write_user/1, search_user/1]).
+-export([start_link/0, stop/0,
+    get_user/1, write_user/1, search_user/1,
+    get_group/1, write_group/1, search_group/1]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -39,6 +41,15 @@ write_user(User) ->
 search_user(SearchString) ->
     gen_server:call(?MODULE, {search_user, SearchString}).
 
+get_group(Groupname) ->
+    gen_server:call(?MODULE, {get_group, Groupname}).
+
+write_group(Group) ->
+    gen_server:call(?MODULE, {write_group, Group}).
+
+search_group(SearchString) ->
+    gen_server:call(?MODULE, {search_group, SearchString}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -51,10 +62,16 @@ handle_call({get_user, Username}, _From, N) ->
     {reply, read_transactional(ibo_user, Username), N + 1};
 handle_call({write_user, User}, _From, N) ->
     {reply, write_transactional(User), N + 1};
-handle_call(stop, _From, N) ->
-    {stop, normal, stopped, N};
 handle_call({search_user, SearchString}, _From, N) ->
-    {reply, search_user_transactional(SearchString), N + 1}.
+    {reply, search_transactional(SearchString, ibo_user, 4), N + 1}; % 4 = lastname
+handle_call({get_group, Groupname}, _From, N) ->
+    {reply, read_transactional(ibo_group, Groupname), N + 1};
+handle_call({write_group, Group}, _From, N) ->
+    {reply, write_transactional(Group), N + 1};
+handle_call({search_group, SearchString}, _From, N) ->
+    {reply, search_transactional(SearchString, ibo_group, 2), N + 1}; % 2 = groupname
+handle_call(stop, _From, N) ->
+    {stop, normal, stopped, N}.
 
 handle_cast(_Msg, N) -> {noreply, N}.
 handle_info(_Info, N) -> {noreply, N}.
@@ -89,12 +106,22 @@ write_transactional(Record) ->
         _ -> {error, "Write failure"}
     end.
 
-search_user_transactional(SearchString) ->
-    Res = mnesia:transaction(fun() ->
-        Q = qlc:q([U || U <- mnesia:table(ibo_user),
-            is_substring_in_string(U#ibo_user.lastname, SearchString)]),
-        qlc:e(Q)
-                             end),
+search_transactional(SearchString,Table,_ElementPosition) when SearchString =:= "" ->
+    Res = mnesia:transaction(
+        fun() ->
+            qlc:e(mnesia:table(Table))
+        end),
+    case Res of
+        {atomic, X} when is_list(X) -> X;
+        _ -> {error, "Search failure"}
+    end;
+search_transactional(SearchString,Table,ElementPosition) ->
+    Res = mnesia:transaction(
+        fun() ->
+            Q = qlc:q([R || R <- mnesia:table(Table),
+                is_substring_in_string(element(ElementPosition,R), SearchString)]),
+            qlc:e(Q)
+        end),
     case Res of
         {atomic, X} when is_list(X) -> X;
         _ -> {error, "Search failure"}
@@ -105,13 +132,4 @@ search_user_transactional(SearchString) ->
 %%%===================================================================
 -spec is_substring_in_string(nonempty_string(), nonempty_string()) -> boolean().
 is_substring_in_string(Source, Find) ->
-    Pos = string:str(Source, Find),
-    io:format("Out: [~p][~p]~n", [Source, Find]),
-    if
-        Pos >= 1 ->
-            io:format("True"),
-            true;
-        true ->
-            io:format("False"),
-            false
-    end.
+    string:str(Source, Find) >= 1. % true if found, false if not found
