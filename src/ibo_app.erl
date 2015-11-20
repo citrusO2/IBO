@@ -37,11 +37,20 @@ start_dependencies() ->
     ok = application:start(cowlib),
     ok = application:start(cowboy).
 
+start_web() ->
+    Dispatch = cowboy_router:compile([
+        {'_', [{"/", toppage_handler, []}]}
+    ]),
+    {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
+        [{env, [{dispatch, Dispatch}]}]
+    ),
+    ok.
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 start(_StartType, _StartArgs) ->
     mnesia:wait_for_tables([ibo_user],5000),
+    start_web(),
     ibo_sup:start_link().
 
 stop(_State) ->
