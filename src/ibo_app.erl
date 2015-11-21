@@ -54,4 +54,5 @@ start(_StartType, _StartArgs) ->
     ibo_sup:start_link().
 
 stop(_State) ->
+    % TODO stop cowboy
     ok.

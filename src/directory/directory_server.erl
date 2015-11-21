@@ -20,6 +20,7 @@
 %% specs -------------------------------------------------------------
 -spec get_user(nonempty_string()) -> #ibo_user{}.
 -spec write_user(#ibo_user{}) -> ok | any().
+% TODO write more specs for API
 
 %% API ---------------------------------------------------------------
 -export([start_link/0, stop/0,
@@ -119,7 +120,7 @@ search_transactional(SearchString,Table,ElementPosition) ->
     Res = mnesia:transaction(
         fun() ->
             Q = qlc:q([R || R <- mnesia:table(Table),
-                is_substring_in_string(element(ElementPosition,R), SearchString)]),
+                is_substring_in_string(element(ElementPosition,R), SearchString)]), % TODO check if mnesia's match_object function or select function is better suited
             qlc:e(Q)
         end),
     case Res of
