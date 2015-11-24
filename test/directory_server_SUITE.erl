@@ -46,7 +46,7 @@ init_per_suite(Config) ->
             {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     mnesia:start(),
-    mnesia:wait_for_tables([ibo_user], 5000),
+    mnesia:wait_for_tables([ibo_user,ibo_group], 5000),
     Config.
 
 end_per_suite(_Config) ->
