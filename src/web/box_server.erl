@@ -2,7 +2,7 @@
 %%% @author Florian
 %%% @copyright (C) 2015, <COMPANY>
 %%% @doc
-%%%     Server where IBOs are stored for access via web
+%%%     Server where XBOs are stored for access via web
 %%% @end
 %%% Created : 21. Nov 2015 17:41
 %%%-------------------------------------------------------------------
@@ -17,7 +17,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, handle_ibo/2]).
+-export([start_link/0, stop/0, handle_xbo/2]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -25,8 +25,8 @@ start_link() ->
 stop() ->
     gen_server:call(?MODULE, stop).
 
-handle_ibo(IBO, Step) ->    % main function where IBOs get send to from other servers
-    gen_server:call(?MODULE, {handle_ibo, IBO, Step}).
+handle_xbo(XBO, Step) ->    % main function where IBOs get send to from other servers
+    gen_server:call(?MODULE, {handle_xbo, XBO, Step}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -36,8 +36,8 @@ init([]) ->
     io:format("~p starting~n", [?MODULE]),
     {ok, 0}. % 0 = initial state
 
-handle_call({handle_ibo, IBO, Step}, _From, N) ->
-    {reply, store_ibo(IBO, Step), N + 1};
+handle_call({handle_xbo, XBO, Step}, _From, N) ->
+    {reply, store_xbo(XBO, Step), N + 1};   % TODO check validity of XBO information (necessary XBO parts, XBO step itself and XBO stepdata)
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
 
@@ -51,20 +51,20 @@ code_change(_OldVsn, N, _Extra) -> {ok, N}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-store_ibo(IBO, Step) ->         % TODO consider correlation ID to "merge" several IDs (correlation ID should be saved in step) -> correlation ID has to be set when creating IBO
-    Id = "IBO",                 % TODO retrieve IBO-ID from IBO
+store_xbo(XBO, Step) ->         % TODO consider correlation ID to "merge" several IDs (correlation ID should be saved in step) -> correlation ID has to be set when creating XBO
+    Id = "IBO",                 % TODO retrieve XBO-ID from XBO
     GroupName = "Testgroup",    % TODO retrieve Groupname from Step itself
-    BoxRec = #ibo_boxdata{iboid = Id, ibodata = IBO,ibostep = Step},
+    BoxRec = #ibo_boxdata{xboid = Id, xbodata = XBO,xbostep = Step},
     Res = mnesia:transaction(
         fun() ->
             mnesia:write(BoxRec),
             case mnesia:wread({ibo_boxindex, GroupName}) of
                 [R] ->
                     mnesia:write(R#ibo_boxindex{
-                        ibolist = [Id|R#ibo_boxindex.ibolist]
+                        xbolist = [Id|R#ibo_boxindex.xbolist]
                     });
                 [] ->
-                    mnesia:write(#ibo_boxindex{groupname = GroupName, ibolist = [id]})
+                    mnesia:write(#ibo_boxindex{groupname = GroupName, xbolist = [id]})
             end
         end),
     case Res of

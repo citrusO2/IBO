@@ -11,12 +11,12 @@
 %% records -----------------------------------------------------------
 %% field 1 = table name, field 2 = key, field 3 = field 1
 -record(ibo_boxdata, {
-    iboid :: nonempty_string(),
-    ibodata :: any(),    % TODO replace with ibo-record after definition of ibo-record
-    ibostep :: non_neg_integer()
+    xboid :: nonempty_string(),
+    xbodata :: any(),    % TODO replace with xbo-record after definition of xbo-record
+    xbostep :: non_neg_integer()
 }).
 
 -record(ibo_boxindex, {
     groupname :: nonempty_string(),
-    ibolist = [] :: list(nonempty_string())
+    xbolist = [] :: list(nonempty_string())
 }).
