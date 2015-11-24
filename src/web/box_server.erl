@@ -10,6 +10,7 @@
 -author("Florian").
 
 -include("box_records.hrl").
+-include("../xbo/xbo_records.hrl").
 
 %% gen_server --------------------------------------------------------
 -behaviour(gen_server).
@@ -25,8 +26,8 @@ start_link() ->
 stop() ->
     gen_server:call(?MODULE, stop).
 
-handle_xbo(XBO, Step) ->    % main function where IBOs get send to from other servers
-    gen_server:call(?MODULE, {handle_xbo, XBO, Step}).
+handle_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
+    gen_server:call(?MODULE, {handle_xbo, XBO, StepNr}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -36,8 +37,8 @@ init([]) ->
     io:format("~p starting~n", [?MODULE]),
     {ok, 0}. % 0 = initial state
 
-handle_call({handle_xbo, XBO, Step}, _From, N) ->
-    {reply, store_xbo(XBO, Step), N + 1};   % TODO check validity of XBO information (necessary XBO parts, XBO step itself and XBO stepdata)
+handle_call({handle_xbo, XBO, StepNr}, _From, N) ->
+    {reply, store_xbo(XBO, StepNr), N + 1};   % TODO check validity of XBO information (necessary XBO parts, XBO step itself and XBO stepdata)
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
 
@@ -51,20 +52,26 @@ code_change(_OldVsn, N, _Extra) -> {ok, N}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-store_xbo(XBO, Step) ->         % TODO consider correlation ID to "merge" several IDs (correlation ID should be saved in step) -> correlation ID has to be set when creating XBO
-    Id = "IBO",                 % TODO retrieve XBO-ID from XBO
-    GroupName = "Testgroup",    % TODO retrieve Groupname from Step itself
-    BoxRec = #ibo_boxdata{xboid = Id, xbodata = XBO,xbostep = Step},
+store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several IDs (correlation ID should be saved in step) -> correlation ID has to be set when creating XBO
+    Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
+    GroupName = Step#ibo_xbostep.local,
+    StepDescription = Step#ibo_xbostep.description,
+    XBOid = XBO#ibo_xbo.id,
+    XBOtemplate = XBO#ibo_xbo.template,
+
+    % create new elements for the box and save them
+    NewBoxRec = #ibo_boxdata{xboid = XBOid, xbodata = XBO, xbostepnr = StepNr},
+    NewBoxIndElemPrev = #ibo_boxindex_elementpreview{xboid = XBOid,xbostepdescription = StepDescription, xbotemplate = XBOtemplate},
     Res = mnesia:transaction(
         fun() ->
-            mnesia:write(BoxRec),
+            mnesia:write(NewBoxRec),
             case mnesia:wread({ibo_boxindex, GroupName}) of
                 [R] ->
                     mnesia:write(R#ibo_boxindex{
-                        xbolist = [Id|R#ibo_boxindex.xbolist]
+                        xbolist = [NewBoxIndElemPrev|R#ibo_boxindex.xbolist]
                     });
                 [] ->
-                    mnesia:write(#ibo_boxindex{groupname = GroupName, xbolist = [id]})
+                    mnesia:write(#ibo_boxindex{groupname = GroupName, xbolist = [NewBoxIndElemPrev]})
             end
         end),
     case Res of
