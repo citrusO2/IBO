@@ -14,7 +14,8 @@
     remove_record_from_mnesia/1,
     print_var/2,
     create_table_for_record/3,
-    read_transactional/2]).
+    read_transactional/2,
+    get_recordcount_in_table/1]).
 
 add_record_to_mnesia(Record) ->
     F = fun() ->
@@ -30,7 +31,7 @@ remove_record_from_mnesia(Record) ->
     {atomic, ok} = mnesia:transaction(F),
     ok.
 
-print_var(Var, VarName) ->
+print_var(VarName, Var) ->
     io:format("~p: ~p~n", [VarName, Var]),
     ok.
 
@@ -48,5 +49,15 @@ read_transactional(Table, Key) ->
     case Res of
         {atomic, [Record]} -> Record;
         {atomic, []} -> not_found;
+        _ -> {error, "Read failure"}
+    end.
+
+get_recordcount_in_table(Table) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:all_keys(Table)
+        end),
+    case Res of
+        {atomic, Record} -> length(Record);
         _ -> {error, "Read failure"}
     end.

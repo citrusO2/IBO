@@ -38,7 +38,13 @@ init([]) ->
     {ok, 0}. % 0 = initial state
 
 handle_call({process_xbo, XBO, StepNr}, _From, N) ->
-    {reply, store_xbo(XBO, StepNr), N + 1};   % TODO check validity of XBO information (necessary XBO parts, XBO step itself and XBO stepdata)
+    try check_xbo(XBO, StepNr) of
+        ok ->
+            {reply, store_xbo(XBO, StepNr), N + 1}
+    catch
+        _:Error ->
+            {reply, {error,{check_xbo,Error}}, N}
+    end;
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
 
@@ -81,4 +87,43 @@ store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several ID
     case Res of
         {atomic, ok} -> ok;
         _ -> {error, "Write failure"}
+    end.
+
+check_xbo(XBO, StepNr) ->
+    StepCount = length(XBO#ibo_xbo.steps),
+    throw_if_true(StepNr > StepCount, "StepNr outside StepRange"),
+
+    Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
+    throw_if_true(Step#ibo_xbostep.domain =:= ?MODULE, "Step is for a different domain"),
+
+    XBOid = XBO#ibo_xbo.id,
+    throw_if_true(XBOid =:= "", "Id of XBO must not be empty"),
+
+    % TODO check commands as well
+    % check if XBO already exists in database (=duplicate XBO) as last check -> slowest check
+    throw_if_true(is_key_in_table(ibo_boxdata,XBOid), "XBO is already in Table"),
+
+    ok.
+%%%===================================================================
+%%% Helper functions
+%%%===================================================================
+throw_if_false(Expression,ThrowReason) ->
+    case Expression of
+        true ->
+            ok;
+        _ ->
+            throw(ThrowReason)
+    end.
+throw_if_true(Expression,ThrowReason)->
+    throw_if_false(not Expression,ThrowReason).
+
+is_key_in_table(Table, Key) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:read(Table, Key)
+        end),
+    case Res of
+        {atomic, [_]} -> true;
+        {atomic, []} -> false;
+        _ -> throw("Cannot check if Key is in Table")
     end.
