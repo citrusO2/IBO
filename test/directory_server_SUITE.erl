@@ -24,6 +24,7 @@
     get_group_test/1, get_group_fail_test/1,
     write_group_test/1, write_group_fail_test/1,
     search_group_test/1]).
+-include("test_helper_incl.erl").
 
 all() -> [get_user_test, get_user_fail_test,
     write_user_test, write_user_fail_test,
@@ -36,23 +37,19 @@ init_per_suite(Config) ->
     Nodes = [node()],
     ok = mnesia:create_schema(Nodes),
     rpc:multicall(Nodes, application, start, [mnesia]),
-    mnesia:create_table(ibo_user,
-        [{attributes, record_info(fields, ibo_user)},
-            {disc_copies, Nodes},
-            {type, set}]),
-    mnesia:create_table(ibo_group,
-        [{attributes, record_info(fields, ibo_group)},
-            {disc_copies, Nodes},
-            {type, set}]),
+    create_table_for_record(ibo_user, record_info(fields, ibo_user), Nodes),    % record_info is a compiler function which gets resolved while compiling
+    create_table_for_record(ibo_group, record_info(fields, ibo_group), Nodes),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     mnesia:start(),
     mnesia:wait_for_tables([ibo_user,ibo_group], 5000),
     Config.
 
 end_per_suite(_Config) ->
-    mnesia:delete_table(ibo_user),
-    mnesia:delete_table(ibo_group),
-    mnesia:stop().
+    Nodes = [node()],
+    {atomic, ok} = mnesia:delete_table(ibo_user),
+    {atomic, ok} = mnesia:delete_table(ibo_group),
+    rpc:multicall(Nodes, application, stop, [mnesia]),
+    mnesia:delete_schema(Nodes).
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     directory_server:start_link(),
@@ -157,25 +154,4 @@ search_group_test(_Config) ->
 
     remove_record_from_mnesia(Record1),
     [Record3] = directory_server:search_group("r"),
-    ok.
-
-%%%===================================================================
-%%% Helper functions
-%%%===================================================================
-add_record_to_mnesia(Record) ->
-    F = fun() ->
-        mnesia:write(Record)
-        end,
-    {atomic, ok} = mnesia:transaction(F),
-    ok.
-
-remove_record_from_mnesia(Record) ->
-    F = fun() ->
-        mnesia:delete({element(1, Record), element(2, Record)})
-        end,
-    {atomic, ok} = mnesia:transaction(F),
-    ok.
-
-print_var(Var, VarName) ->
-    io:format("~p: ~p~n", [VarName, Var]),
     ok.
