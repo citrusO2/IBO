@@ -22,7 +22,7 @@
     domain :: nonempty_string(),            % identifier for the system where the step should be executed
     local :: nonempty_string() | none(),    % for possible further division (e.g. to deliver to the right input-box)
     description :: nonempty_string(),       % description of step
-    code :: nonempty_list(#ibo_xboline{})
+    commands :: nonempty_list(#ibo_xboline{})
 }).
 
 -record(ibo_xbo, {

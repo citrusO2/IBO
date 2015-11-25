@@ -24,7 +24,6 @@
     get_group_test/1, get_group_fail_test/1,
     write_group_test/1, write_group_fail_test/1,
     search_group_test/1]).
--include("test_helper_incl.erl").
 
 all() -> [get_user_test, get_user_fail_test,
     write_user_test, write_user_fail_test,
@@ -37,8 +36,8 @@ init_per_suite(Config) ->
     Nodes = [node()],
     ok = mnesia:create_schema(Nodes),
     rpc:multicall(Nodes, application, start, [mnesia]),
-    create_table_for_record(ibo_user, record_info(fields, ibo_user), Nodes),    % record_info is a compiler function which gets resolved while compiling
-    create_table_for_record(ibo_group, record_info(fields, ibo_group), Nodes),
+    ct_helper:create_table_for_record(ibo_user, record_info(fields, ibo_user), Nodes),    % record_info is a compiler function which gets resolved while compiling
+    ct_helper:create_table_for_record(ibo_group, record_info(fields, ibo_group), Nodes),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     mnesia:start(),
     mnesia:wait_for_tables([ibo_user,ibo_group], 5000),
@@ -53,8 +52,8 @@ end_per_suite(_Config) ->
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     directory_server:start_link(),
-    add_record_to_mnesia(?USER),
-    add_record_to_mnesia(?GROUP),
+    ct_helper:add_record_to_mnesia(?USER),
+    ct_helper:add_record_to_mnesia(?GROUP),
     Config.
 
 end_per_testcase(_, _Config) ->
@@ -68,14 +67,14 @@ end_per_testcase(_, _Config) ->
 get_user_test(_Config) ->
     Record1 = ?USER,
     Record2 = directory_server:get_user(Record1#ibo_user.username),
-    print_var("Record1", Record1),
-    print_var("Record2", Record2),
+    ct_helper:print_var("Record1", Record1),
+    ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
     ok.
 
 get_user_fail_test(_Config) ->
     Out = directory_server:get_user("MiauMiau"),
-    print_var("Out", Out),
+    ct_helper:print_var("Out", Out),
     true = Out =:= not_found,
     ok.
 
@@ -88,7 +87,7 @@ write_user_test(_Config) ->
 
 write_user_fail_test(_Config) ->
     Out = directory_server:write_user({"Crazy", "NotUsed", "Wrong Record"}),
-    print_var("Out", Out),
+    ct_helper:print_var("Out", Out),
     {error, _} = Out,
     ok.
 
@@ -96,16 +95,16 @@ search_user_test(_Config) ->
     Record1 = ?USER,
     [Record2] = directory_server:search_user("Froe"),
     [] = directory_server:search_user("Dühr"),
-    print_var("Record1", Record1),
-    print_var("Record2", Record2),
+    ct_helper:print_var("Record1", Record1),
+    ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
 
-    add_record_to_mnesia(?NEWUSER),
+    ct_helper:add_record_to_mnesia(?NEWUSER),
     [Record3] = directory_server:search_user("Dühr"),
     true = Record3 =:= ?NEWUSER,
     2 = length(directory_server:search_user("")),
 
-    remove_record_from_mnesia(Record1),
+    ct_helper:remove_record_from_mnesia(Record1),
     [Record3] = directory_server:search_user("r"),
     ok.
 
@@ -115,14 +114,14 @@ search_user_test(_Config) ->
 get_group_test(_Config) ->
     Record1 = ?GROUP,
     Record2 = directory_server:get_group(Record1#ibo_group.groupname),
-    print_var("Record1", Record1),
-    print_var("Record2", Record2),
+    ct_helper:print_var("Record1", Record1),
+    ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
     ok.
 
 get_group_fail_test(_Config) ->
     Out = directory_server:get_group("MiauMiau"),
-    print_var("Out", Out),
+    ct_helper:print_var("Out", Out),
     true = Out =:= not_found,
     ok.
 
@@ -135,7 +134,7 @@ write_group_test(_Config) ->
 
 write_group_fail_test(_Config) ->
     Out = directory_server:write_group({"Crazy", "NotUsed", "Wrong Record"}),
-    print_var("Out", Out),
+    ct_helper:print_var("Out", Out),
     {error, _} = Out,
     ok.
 
@@ -143,15 +142,15 @@ search_group_test(_Config) ->
     Record1 = ?GROUP,
     [Record2] = directory_server:search_group("ACME"),
     [] = directory_server:search_group("Mark"),
-    print_var("Record1", Record1),
-    print_var("Record2", Record2),
+    ct_helper:print_var("Record1", Record1),
+    ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
 
-    add_record_to_mnesia(?NEWGROUP),
+    ct_helper:add_record_to_mnesia(?NEWGROUP),
     [Record3] = directory_server:search_group("Mark"),
     true = Record3 =:= ?NEWGROUP,
     2 = length(directory_server:search_group("")),
 
-    remove_record_from_mnesia(Record1),
+    ct_helper:remove_record_from_mnesia(Record1),
     [Record3] = directory_server:search_group("r"),
     ok.

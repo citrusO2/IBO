@@ -8,12 +8,14 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
+-include("../xbo/xbo_records.hrl").
+
 %% records -----------------------------------------------------------
 %% field 1 = table name, field 2 = key, field 3 = field 1
 %% saves the current XBO to retrieve it for later usage (so that user can access them)
 -record(ibo_boxdata, {
     xboid :: nonempty_string(),
-    xbodata :: any(),    % TODO replace with xbo-record after definition of xbo-record
+    xbodata :: #ibo_xbo{},
     xbostepnr :: non_neg_integer()
 }).
 
@@ -21,7 +23,8 @@
 -record(ibo_boxindex_elementpreview, {
     xboid :: nonempty_string(),
     xbotemplate :: nonempty_string(),
-    xbostepdescription :: nonempty_string()     % maybe consider dynamically creating a description for each XBO (e.g. containing individual XBO information)
+    xbostepdescription :: nonempty_string(),     % maybe consider dynamically creating a description for each XBO (e.g. containing individual XBO information)
+    storedate :: timestamp()
 }).
 
 %% index of all XBOs for an individual group, so that

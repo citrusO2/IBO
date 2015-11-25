@@ -6,6 +6,15 @@
 %%% @end
 %%% Created : 25. Nov 2015 09:28
 %%%-------------------------------------------------------------------
+-module(ct_helper).
+-author("Florian").
+
+%% API ---------------------------------------------------------------
+-export([add_record_to_mnesia/1,
+    remove_record_from_mnesia/1,
+    print_var/2,
+    create_table_for_record/3,
+    read_transactional/2]).
 
 add_record_to_mnesia(Record) ->
     F = fun() ->
@@ -30,3 +39,14 @@ create_table_for_record(Table, RecordInfo, Nodes) ->
         [{attributes, RecordInfo},
             {disc_copies, Nodes},
             {type, set}]).
+
+read_transactional(Table, Key) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:read(Table, Key)
+        end),
+    case Res of
+        {atomic, [Record]} -> Record;
+        {atomic, []} -> not_found;
+        _ -> {error, "Read failure"}
+    end.

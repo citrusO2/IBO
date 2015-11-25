@@ -10,7 +10,7 @@
 -author("Florian").
 
 -include("box_records.hrl").
--include("../xbo/xbo_records.hrl").
+%-include("../xbo/xbo_records.hrl"). % gets includes from the box_record.hrl file already
 
 %% gen_server --------------------------------------------------------
 -behaviour(gen_server).
@@ -18,7 +18,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, handle_xbo/2]).
+-export([start_link/0, stop/0, process_xbo/2]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -26,8 +26,8 @@ start_link() ->
 stop() ->
     gen_server:call(?MODULE, stop).
 
-handle_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
-    gen_server:call(?MODULE, {handle_xbo, XBO, StepNr}).
+process_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
+    gen_server:call(?MODULE, {process_xbo, XBO, StepNr}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -37,7 +37,7 @@ init([]) ->
     io:format("~p starting~n", [?MODULE]),
     {ok, 0}. % 0 = initial state
 
-handle_call({handle_xbo, XBO, StepNr}, _From, N) ->
+handle_call({process_xbo, XBO, StepNr}, _From, N) ->
     {reply, store_xbo(XBO, StepNr), N + 1};   % TODO check validity of XBO information (necessary XBO parts, XBO step itself and XBO stepdata)
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
@@ -61,7 +61,11 @@ store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several ID
 
     % create new elements for the box and save them
     NewBoxRec = #ibo_boxdata{xboid = XBOid, xbodata = XBO, xbostepnr = StepNr},
-    NewBoxIndElemPrev = #ibo_boxindex_elementpreview{xboid = XBOid,xbostepdescription = StepDescription, xbotemplate = XBOtemplate},
+    NewBoxIndElemPrev = #ibo_boxindex_elementpreview{
+        xboid = XBOid,
+        xbostepdescription = StepDescription,
+        xbotemplate = XBOtemplate,
+        storedate = os:timestamp()},
     Res = mnesia:transaction(
         fun() ->
             mnesia:write(NewBoxRec),
