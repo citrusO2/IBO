@@ -32,3 +32,8 @@
     groupname :: nonempty_string(),
     xbolist = [] :: list(#ibo_boxindex_elementpreview{})
 }).
+
+%% state of the boxserver
+-record(ibo_boxserver_state, {
+   domain :: nonempty_string()
+}).

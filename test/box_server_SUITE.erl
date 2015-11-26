@@ -9,49 +9,14 @@
 -module(box_server_SUITE).
 -author("Florian").
 
--include("../src/web/box_records.hrl").
--define(XBO, #ibo_xbo{
-    id = "1-141232",
-    format_indicator = 1,
-    created_by = "hanswurst",
-    template = "holidayapplication",
-    steps = [#ibo_xbostep{
-        domain = "box_server",
-        local = "marketing",    % this XBO Step is meant for the "marketing" group (ibo_group.groupname)
-        commands = [
-            #ibo_xboline{
-                library = "TEST",
-                command = "testcommand",
-                args = "testarg"
-            }
-        ]
-    }]
-}).
-
--define(NEWXBO, #ibo_xbo{
-    id = "1-141233",
-    format_indicator = 1,
-    created_by = "hanswurst",
-    template = "marketingbudgetdecision",
-    steps = [#ibo_xbostep{
-        domain = "box_server",
-        local = "marketing",
-        commands = [
-            #ibo_xboline{
-                library = "TEST",
-                command = "testcommand",
-                args = "testarg"
-            }
-        ]
-    }]
-}).
+-include("box_server_ct_macros.hrl").
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1, process_xbo_duplication_test/1]).
+-export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1, process_xbo_duplication_test/1,process_xbo_check_test/1]).
 
-all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test, process_xbo_duplication_test].
+all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test, process_xbo_duplication_test, process_xbo_check_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -144,4 +109,24 @@ process_xbo_duplication_test(_Config) ->
     ct_helper:print_var("Response2", Response2),
     ct_helper:print_var("Response3", Response3),
     ct_helper:print_var("Response4", Response4),
+    ok.
+
+process_xbo_check_test(_Config) ->
+    XBOstepnr = 1,
+    XBOfailstepnr = 2,
+    0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
+
+    {error, _} = box_server:process_xbo(?XBO, XBOfailstepnr),
+    {error, _} = box_server:process_xbo(?NEWXBO, XBOfailstepnr),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
+
+    {error, _} = box_server:process_xbo(?FAILXBO, XBOstepnr),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
+
+    {error, _} = box_server:process_xbo(?XBO#ibo_xbo{id = ""}, XBOstepnr),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ok.

@@ -35,25 +35,25 @@ process_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other
 init([]) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     io:format("~p starting~n", [?MODULE]),
-    {ok, 0}. % 0 = initial state
+    {ok, #ibo_boxserver_state{domain = atom_to_list(?MODULE)}}. % initial state
 
-handle_call({process_xbo, XBO, StepNr}, _From, N) ->
-    try check_xbo(XBO, StepNr) of
+handle_call({process_xbo, XBO, StepNr}, _From, State) ->
+    try check_xbo(XBO, StepNr, State) of
         ok ->
-            {reply, store_xbo(XBO, StepNr), N + 1}
+            {reply, store_xbo(XBO, StepNr), State}
     catch
         _:Error ->
-            {reply, {error,{check_xbo,Error}}, N}
+            {reply, {error,{check_xbo,Error}}, State}
     end;
-handle_call(stop, _From, N) ->
-    {stop, normal, stopped, N}.
+handle_call(stop, _From, State) ->
+    {stop, normal, stopped, State}.
 
-handle_cast(_Msg, N) -> {noreply, N}.
-handle_info(_Info, N) -> {noreply, N}.
-terminate(_Reason, _N) ->
+handle_cast(_Msg, State) -> {noreply, State}.
+handle_info(_Info, State) -> {noreply, State}.
+terminate(_Reason, _State) ->
     io:format("~p stopping~n", [?MODULE]),
     ok.
-code_change(_OldVsn, N, _Extra) -> {ok, N}.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -89,12 +89,12 @@ store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several ID
         _ -> {error, "Write failure"}
     end.
 
-check_xbo(XBO, StepNr) ->
+check_xbo(XBO, StepNr, State) ->
     StepCount = length(XBO#ibo_xbo.steps),
     throw_if_true(StepNr > StepCount, "StepNr outside StepRange"),
 
     Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
-    throw_if_true(Step#ibo_xbostep.domain =:= ?MODULE, "Step is for a different domain"),
+    throw_if_false(Step#ibo_xbostep.domain =:= State#ibo_boxserver_state.domain, "Step is for a different domain"),
 
     XBOid = XBO#ibo_xbo.id,
     throw_if_true(XBOid =:= "", "Id of XBO must not be empty"),
