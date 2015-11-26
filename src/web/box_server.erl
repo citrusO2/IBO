@@ -10,7 +10,7 @@
 -author("Florian").
 
 -include("box_records.hrl").
-%-include("../xbo/xbo_records.hrl"). % gets includes from the box_record.hrl file already
+-behaviour(xbo_endpoint_behaviour).
 
 %% gen_server --------------------------------------------------------
 -behaviour(gen_server).

@@ -45,13 +45,13 @@
     }]
 }).
 
--define(FAILXBO, #ibo_xbo{
+-define(FAILXBO_WRONGDOMAIN, #ibo_xbo{
     id = "1-141234",
     format_indicator = 1,
     created_by = "hanswurst",
     template = "marketingbudgetdecision",
     steps = [#ibo_xbostep{
-        domain = "start_destroyer",
+        domain = "star_destroyer",
         local = "marketing",
         commands = [
             #ibo_xboline{

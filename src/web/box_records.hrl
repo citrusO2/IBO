@@ -15,8 +15,8 @@
 %% saves the current XBO to retrieve it for later usage (so that user can access them)
 -record(ibo_boxdata, {
     xboid :: nonempty_string(),
-    xbodata :: #ibo_xbo{},
-    xbostepnr :: non_neg_integer()
+    xbostepnr :: non_neg_integer(),
+    xbodata :: #ibo_xbo{}
 }).
 
 %% preview of the XBO which get shown to the user (so that not all XBOs have to retrieved all the time when accessing the box for a group)
