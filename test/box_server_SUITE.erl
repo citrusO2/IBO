@@ -14,9 +14,13 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1, process_xbo_duplication_test/1,process_xbo_check_test/1]).
+-export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1,
+    process_xbo_duplication_test/1,process_xbo_check_test/1,
+    get_boxindices_test/1]).
 
-all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test, process_xbo_duplication_test, process_xbo_check_test].
+all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test,
+    process_xbo_duplication_test, process_xbo_check_test,
+    get_boxindices_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -130,3 +134,24 @@ process_xbo_check_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ok.
+
+get_boxindices_test(_Config) ->
+    XBOstepnr = 1,
+    ok = box_server:process_xbo(?XBO, XBOstepnr),
+    ok = box_server:process_xbo(?NEWGROUPXBO1, XBOstepnr),
+    ok = box_server:process_xbo(?NEWGROUPXBO2, XBOstepnr),
+
+    Response1 = box_server:get_boxindices(["marketing", "it"]),
+    false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "production" end, Response1),
+    ct_helper:print_var("Response1",Response1),
+
+    Response2 = box_server:get_boxindices(["marketing", "production"]),
+    false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "it" end, Response2),
+    ct_helper:print_var("Response2",Response2),
+
+    Response3 = box_server:get_boxindices(["production", "it"]),
+    false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "marketing" end, Response3),
+    ct_helper:print_var("Response3",Response3),
+
+    [] = Response4 = box_server:get_boxindices(["blablub", "miau"]),
+    ct_helper:print_var("Response1",Response4).

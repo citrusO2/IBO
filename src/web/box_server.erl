@@ -10,6 +10,7 @@
 -author("Florian").
 
 -include("box_records.hrl").
+-include_lib("stdlib/include/qlc.hrl").
 -behaviour(xbo_endpoint_behaviour).
 
 %% gen_server --------------------------------------------------------
@@ -18,7 +19,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, process_xbo/2]).
+-export([start_link/0, stop/0, process_xbo/2, get_boxindices/1]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -28,6 +29,9 @@ stop() ->
 
 process_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
     gen_server:call(?MODULE, {process_xbo, XBO, StepNr}).
+
+get_boxindices(GroupNameList) ->
+    gen_server:call(?MODULE, {get_boxindices, GroupNameList}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -45,6 +49,8 @@ handle_call({process_xbo, XBO, StepNr}, _From, State) ->
         _:Error ->
             {reply, {error,{check_xbo,Error}}, State}
     end;
+handle_call({get_boxindices, GroupNameList}, _From, State) ->
+    {reply, read_boxindices(GroupNameList), State};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
@@ -102,8 +108,21 @@ check_xbo(XBO, StepNr, State) ->
     % TODO check commands as well
     % check if XBO already exists in database (=duplicate XBO) as last check -> slowest check
     throw_if_true(is_key_in_table(ibo_boxdata,XBOid), "XBO is already in Table"),
-
     ok.
+
+read_boxindices(GroupNameList) when is_list(GroupNameList) ->
+    ct_helper:print_var("GroupNameList",GroupNameList),
+    Res = mnesia:transaction(
+        fun() ->
+            Q = qlc:q([R || R <- mnesia:table(ibo_boxindex),
+                G <- GroupNameList, R#ibo_boxindex.groupname =:= G ]),
+            qlc:e(Q)
+        end),
+    case Res of
+        {atomic, X} when is_list(X) -> X;
+        Err -> {error, {"Failed to retrieve boxindices", Err}}
+    end.
+
 %%%===================================================================
 %%% Helper functions
 %%%===================================================================
