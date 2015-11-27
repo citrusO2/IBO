@@ -1,1 +1,1 @@
-rebar compile && ct_run -noshell -pa "./ebin" "." -name test@Dev-PC -logdir "./logs" -env TEST_DIR "./test"  -dir test  2>&1
+rebar compile && ct_run -noshell -pa "./ebin" "." "./deps/pbkdf2/ebin"  -name test@Dev-PC -logdir "./logs" -env TEST_DIR "./test"  -dir test  2>&1

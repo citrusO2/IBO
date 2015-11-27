@@ -25,7 +25,8 @@
 %% API ---------------------------------------------------------------
 -export([start_link/0, stop/0,
     get_user/1, write_user/1, search_user/1,
-    get_group/1, write_group/1, search_group/1]).
+    get_group/1, write_group/1, search_group/1,
+    create_user/2, update_user/2, get_groups_auth/2]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -51,6 +52,16 @@ write_group(Group) ->
 search_group(SearchString) ->
     gen_server:call(?MODULE, {search_group, SearchString}).
 
+% Higher API functions -- TODO: remove lower functions with higher ones
+create_user(User, Password) ->
+    gen_server:call(?MODULE, {create_user, User, Password}).
+
+update_user(User, Password) ->
+    create_user(User, Password).
+
+get_groups_auth(Username,Password) ->
+    gen_server:call(?MODULE, {get_groups_auth,Username,Password}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -71,6 +82,10 @@ handle_call({write_group, Group}, _From, N) ->
     {reply, write_transactional(Group), N + 1};
 handle_call({search_group, SearchString}, _From, N) ->
     {reply, search_transactional(SearchString, ibo_group, 2), N + 1}; % 2 = groupname
+handle_call({create_user, User, Password}, _From, N) ->
+    {reply, create_or_update_user(User, Password), N + 1};
+handle_call({get_groups_auth, Username,Password}, _From, N) ->
+    {reply, get_groups_of_user(Username, Password), N + 1};
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
 
@@ -128,9 +143,66 @@ search_transactional(SearchString,Table,ElementPosition) ->
         _ -> {error, "Search failure"}
     end.
 
+create_or_update_user(User, Password) ->
+    Username = User#ibo_user.username,
+    Res = mnesia:transaction(
+        fun() ->
+            case mnesia:wread({ibo_user,Username}) of
+                [StoredUser] ->
+                    case is_password_correct(StoredUser, Password) of
+                        true ->
+                            mnesia:write(User#ibo_user{password = create_protected_password(Password)});
+                        false ->
+                            mnesia:abort("Incorrect password")
+                    end;
+                [] ->
+                    NewUser = User#ibo_user{password = create_protected_password(Password)},
+                    mnesia:write(NewUser)
+            end
+        end),
+    case Res of
+        {atomic, ok} -> ok;
+        {aborted, Reason} -> {error, Reason};
+        _ -> {error, "Write failure"}
+    end.
+
+get_groups_of_user(Username, Password) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:read(ibo_user, Username)
+        end),
+    case Res of
+        {atomic, [User]} ->
+            case is_password_correct(User, Password) of
+                true ->
+                    User#ibo_user.groups;
+                false ->
+                    {error, "Wrong password"}
+            end;
+        {atomic, []} -> {error, "User not found"};
+        _ -> {error, "Read failure"}
+    end.
+
 %%%===================================================================
 %%% Helper functions
 %%%===================================================================
 -spec is_substring_in_string(nonempty_string(), nonempty_string()) -> boolean().
 is_substring_in_string(Source, Find) ->
     string:str(Source, Find) >= 1. % true if found, false if not found
+
+% TODO: make directory_server parallel, protected password creation = compute expensive
+create_protected_password(ClearPassword) ->
+    Salt = crypto:strong_rand_bytes(64),
+    Iterations = 20000,
+    DerivedLength = 64,
+    {ok, Key} = pbkdf2:pbkdf2(sha512, ClearPassword, Salt, Iterations, DerivedLength),
+    {Salt, Key}.
+
+is_password_correct(User, ClearPassword)->
+    Salt = element(1, User#ibo_user.password),
+    StoredKey = element(2, User#ibo_user.password),
+    Iterations = 20000,
+    DerivedLength = 64,
+    {ok, NewKey} = pbkdf2:pbkdf2(sha512, ClearPassword, Salt, Iterations, DerivedLength),
+
+    NewKey =:= StoredKey.

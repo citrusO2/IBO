@@ -11,7 +11,7 @@
 
 -include("../src/directory/directory_records.hrl").
 -define(USER, #ibo_user{username = "ff", firstname = "Fabian", lastname = "Froelich"}).
--define(NEWUSER, #ibo_user{username = "dd", firstname = "Doris", lastname = "Dührwald"}).
+-define(NEWUSER, #ibo_user{username = "dd", firstname = "Doris", lastname = "Dührwald", groups = ["marketing"]}).
 -define(GROUP, #ibo_group{groupname = "ACME_Corporation", groupdescription = "This should be the root group"}).
 -define(NEWGROUP, #ibo_group{groupname = "Marketing", groupdescription = "Group for the Unit Marketing", parent = "ACME_Corporation"}).
 
@@ -23,16 +23,19 @@
     search_user_test/1,
     get_group_test/1, get_group_fail_test/1,
     write_group_test/1, write_group_fail_test/1,
-    search_group_test/1]).
+    search_group_test/1,
+    create_user_test/1, get_groups_auth_test/1]).
 
 all() -> [get_user_test, get_user_fail_test,
     write_user_test, write_user_fail_test,
     search_user_test,
     get_group_test, get_group_fail_test,
     write_group_test, write_group_fail_test,
-    search_group_test].
+    search_group_test,
+    create_user_test, get_groups_auth_test].
 
 init_per_suite(Config) ->
+    application:start(crypto),
     Nodes = [node()],
     ok = mnesia:create_schema(Nodes),
     rpc:multicall(Nodes, application, start, [mnesia]),
@@ -44,6 +47,7 @@ init_per_suite(Config) ->
     Config.
 
 end_per_suite(_Config) ->
+    application:stop(crypto),
     Nodes = [node()],
     {atomic, ok} = mnesia:delete_table(ibo_user),
     {atomic, ok} = mnesia:delete_table(ibo_group),
@@ -154,3 +158,33 @@ search_group_test(_Config) ->
     ct_helper:remove_record_from_mnesia(Record1),
     [Record3] = directory_server:search_group("r"),
     ok.
+
+%%%===================================================================
+%%% Higher User Tests
+%%%===================================================================
+create_user_test(_Config) ->
+    Password = <<"MySecretPassword">>,
+    Record1 = ?NEWUSER,
+    ct_helper:print_var("Record1", Record1),
+    ok = directory_server:create_user(Record1, Password),
+
+    {ibo_user,"dd","Doris",_,_,_} = Record2 = directory_server:get_user(Record1#ibo_user.username),
+    ct_helper:print_var("Record2", Record2),
+
+    UpdatedUser = Record2#ibo_user{firstname = "Daniela"},
+    ct_helper:print_var("UpdatedUser", UpdatedUser),
+    directory_server:update_user(UpdatedUser, Password),
+
+    {ibo_user,"dd","Daniela",_,_,_} = Record3 = directory_server:get_user(Record1#ibo_user.username),
+    ct_helper:print_var("Record3", Record3),
+
+    UpdatedUser2 = Record3#ibo_user{firstname = "Darsir"},
+    {error,"Incorrect password"} = directory_server:update_user(UpdatedUser2, <<"Miau">>),
+    ok.
+
+get_groups_auth_test(_Config) ->
+    Password = <<"MySecretPassword">>,
+    Record1 = ?NEWUSER,
+    ok = directory_server:create_user(Record1, Password),
+    ["marketing"] = directory_server:get_groups_auth(Record1#ibo_user.username, Password),
+    {error, "Wrong password"} = directory_server:get_groups_auth(Record1#ibo_user.username, <<"Plubla">>).

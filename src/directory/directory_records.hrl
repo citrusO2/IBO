@@ -14,7 +14,9 @@
     username :: nonempty_string(),
     firstname :: nonempty_string(),
     lastname :: nonempty_string(),
-    groups = [] :: nonempty_list(nonempty_string())}).
+    groups = [] :: nonempty_list(nonempty_string()),
+    password :: {byte(), byte()}    % salt + password
+}).
 
 -record(ibo_group, {
     groupname :: nonempty_string(),
