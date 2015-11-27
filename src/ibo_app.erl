@@ -39,7 +39,11 @@ start_dependencies() ->
 
 start_web() ->
     Dispatch = cowboy_router:compile([
-        {'_', [{"/", toppage_handler, []}]}
+        {'_', [
+            {"/", cowboy_static, [file, "./src/webclient/index.html"]},
+            {"/api", toppage_handler, []},
+            {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
+        ]}
     ]),
     {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
         [{env, [{dispatch, Dispatch}]}]
