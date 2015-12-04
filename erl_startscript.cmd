@@ -1,1 +1,1 @@
-rebar get-deps compile && erl -pa ./ebin -env ERL_LIBS ./deps -boot start_sasl -run ibo_app start_dependencies
+rebar get-deps compile && erl -pa ./ebin -name console@127.0.0.1 -env ERL_LIBS ./deps -boot start_sasl -run ibo_app start_dependencies
