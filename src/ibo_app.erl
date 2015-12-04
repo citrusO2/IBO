@@ -40,7 +40,7 @@ start_dependencies() ->
 start_web() ->
     Dispatch = cowboy_router:compile([
         {'_', [
-            {"/", cowboy_static, [file, "./src/webclient/index.html"]},
+            {"/", cowboy_static, {file, "./src/webclient/index.html"}},
             {"/api", toppage_handler, []},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}
