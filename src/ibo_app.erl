@@ -35,12 +35,15 @@ start_dependencies() ->
     ok = application:start(crypto),
     ok = application:start(ranch),
     ok = application:start(cowlib),
-    ok = application:start(cowboy).
+    ok = application:start(cowboy),
+    application:set_env(mnesia, dir, "./ebin/mnesia"), % consider using configuration file
+    ok = application:start(mnesia).
 
 start_web() ->
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
+            {"/api/box/overview", box_handler, []},
             {"/api", toppage_handler, []},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}

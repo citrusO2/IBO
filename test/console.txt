@@ -14,3 +14,5 @@ F = fun() ->
 mnesia:transaction(F),
 
 directory_server:get_user("ff").
+
+directory_server:create_user({ibo_user,<<"tu">>,<<"Theodor">>,<<"Urula">>,[<<"marketing">>,<<"admins">>],<<"pass123">>},<<"pass123">>).

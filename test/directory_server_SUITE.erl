@@ -24,7 +24,7 @@
     get_group_test/1, get_group_fail_test/1,
     write_group_test/1, write_group_fail_test/1,
     search_group_test/1,
-    create_user_test/1, get_groups_auth_test/1]).
+    create_user_test/1, get_user_info/1]).
 
 all() -> [get_user_test, get_user_fail_test,
     write_user_test, write_user_fail_test,
@@ -32,7 +32,7 @@ all() -> [get_user_test, get_user_fail_test,
     get_group_test, get_group_fail_test,
     write_group_test, write_group_fail_test,
     search_group_test,
-    create_user_test, get_groups_auth_test].
+    create_user_test, get_user_info].
 
 init_per_suite(Config) ->
     application:start(crypto),
@@ -182,9 +182,11 @@ create_user_test(_Config) ->
     {error,"Incorrect password"} = directory_server:update_user(UpdatedUser2, <<"Miau">>),
     ok.
 
-get_groups_auth_test(_Config) ->
+get_user_info(_Config) ->
     Password = <<"MySecretPassword">>,
     Record1 = ?NEWUSER,
     ok = directory_server:create_user(Record1, Password),
-    ["marketing"] = directory_server:get_groups_auth(Record1#ibo_user.username, Password),
-    {error, "Wrong password"} = directory_server:get_groups_auth(Record1#ibo_user.username, <<"Plubla">>).
+    Response1 = directory_server:get_user_info(Record1#ibo_user.username, Password),
+    ct_helper:print_var("Response1",Response1),
+    Response1 = Record1,
+    {error, "Wrong password"} = directory_server:get_user_info(Record1#ibo_user.username, <<"Plubla">>).

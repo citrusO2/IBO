@@ -26,7 +26,7 @@
 -export([start_link/0, stop/0,
     get_user/1, write_user/1, search_user/1,
     get_group/1, write_group/1, search_group/1,
-    create_user/2, update_user/2, get_groups_auth/2]).
+    create_user/2, update_user/2, get_user_info/2]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -59,8 +59,8 @@ create_user(User, Password) ->
 update_user(User, Password) ->
     create_user(User, Password).
 
-get_groups_auth(Username,Password) ->
-    gen_server:call(?MODULE, {get_groups_auth,Username,Password}).
+get_user_info(Username,Password) ->
+    gen_server:call(?MODULE, {get_user_info,Username,Password}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,8 +84,8 @@ handle_call({search_group, SearchString}, _From, N) ->
     {reply, search_transactional(SearchString, ibo_group, 2), N + 1}; % 2 = groupname
 handle_call({create_user, User, Password}, _From, N) ->
     {reply, create_or_update_user(User, Password), N + 1};
-handle_call({get_groups_auth, Username,Password}, _From, N) ->
-    {reply, get_groups_of_user(Username, Password), N + 1};
+handle_call({get_user_info, Username,Password}, _From, N) ->
+    {reply, read_user_info(Username, Password), N + 1};
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
 
@@ -166,7 +166,7 @@ create_or_update_user(User, Password) ->
         _ -> {error, "Write failure"}
     end.
 
-get_groups_of_user(Username, Password) ->
+read_user_info(Username, Password) ->
     Res = mnesia:transaction(
         fun() ->
             mnesia:read(ibo_user, Username)
@@ -175,7 +175,7 @@ get_groups_of_user(Username, Password) ->
         {atomic, [User]} ->
             case is_password_correct(User, Password) of
                 true ->
-                    User#ibo_user.groups;
+                    User#ibo_user{password = undefined};    % retrieves user without password information
                 false ->
                     {error, "Wrong password"}
             end;
