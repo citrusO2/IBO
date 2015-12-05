@@ -10,6 +10,7 @@
 -author("Florian").
 
 -include("box_records.hrl").
+-include("../directory/directory_records.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -behaviour(xbo_endpoint_behaviour).
 
@@ -30,8 +31,10 @@ stop() ->
 process_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
     gen_server:call(?MODULE, {process_xbo, XBO, StepNr}).
 
-get_boxindices(GroupNameList) ->
-    gen_server:call(?MODULE, {get_boxindices, GroupNameList}).
+get_boxindices(GroupNameList) when is_list(GroupNameList) ->
+    gen_server:call(?MODULE, {get_boxindices, GroupNameList});
+get_boxindices(User) when is_record(User, ibo_user) ->
+    get_boxindices(User#ibo_user.groups).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -111,7 +114,6 @@ check_xbo(XBO, StepNr, State) ->
     ok.
 
 read_boxindices(GroupNameList) when is_list(GroupNameList) ->
-    ct_helper:print_var("GroupNameList",GroupNameList),
     Res = mnesia:transaction(
         fun() ->
             Q = qlc:q([R || R <- mnesia:table(ibo_boxindex),

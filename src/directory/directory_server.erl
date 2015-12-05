@@ -59,8 +59,8 @@ create_user(User, Password) ->
 update_user(User, Password) ->
     create_user(User, Password).
 
-get_user_info(Username,Password) ->
-    gen_server:call(?MODULE, {get_user_info,Username,Password}).
+get_user_info(Username, Password) ->
+    gen_server:call(?MODULE, {get_user_info, Username, Password}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,7 +84,7 @@ handle_call({search_group, SearchString}, _From, N) ->
     {reply, search_transactional(SearchString, ibo_group, 2), N + 1}; % 2 = groupname
 handle_call({create_user, User, Password}, _From, N) ->
     {reply, create_or_update_user(User, Password), N + 1};
-handle_call({get_user_info, Username,Password}, _From, N) ->
+handle_call({get_user_info, Username, Password}, _From, N) ->
     {reply, read_user_info(Username, Password), N + 1};
 handle_call(stop, _From, N) ->
     {stop, normal, stopped, N}.
@@ -122,24 +122,24 @@ write_transactional(Record) ->
         _ -> {error, "Write failure"}
     end.
 
-search_transactional(SearchString,Table,_ElementPosition) when SearchString =:= "" ->
+search_transactional(SearchString, Table, _ElementPosition) when SearchString =:= "" orelse SearchString =:= <<"">> ->
     Res = mnesia:transaction(
         fun() ->
             qlc:e(mnesia:table(Table))
         end),
     case Res of
-        {atomic, X} when is_list(X) -> X;
+        {atomic, L} when is_list(L) -> override_password(L);
         _ -> {error, "Search failure"}
     end;
-search_transactional(SearchString,Table,ElementPosition) ->
+search_transactional(SearchString, Table, ElementPosition) ->
     Res = mnesia:transaction(
         fun() ->
             Q = qlc:q([R || R <- mnesia:table(Table),
-                is_substring_in_string(element(ElementPosition,R), SearchString)]), % TODO check if mnesia's match_object function or select function is better suited
+                is_substring_in_string(element(ElementPosition, R), SearchString)]), % TODO check if mnesia's match_object function or select function is better suited
             qlc:e(Q)
         end),
     case Res of
-        {atomic, X} when is_list(X) -> X;
+        {atomic, L} when is_list(L) -> override_password(L);
         _ -> {error, "Search failure"}
     end.
 
@@ -147,7 +147,7 @@ create_or_update_user(User, Password) ->
     Username = User#ibo_user.username,
     Res = mnesia:transaction(
         fun() ->
-            case mnesia:wread({ibo_user,Username}) of
+            case mnesia:wread({ibo_user, Username}) of
                 [StoredUser] ->
                     case is_password_correct(StoredUser, Password) of
                         true ->
@@ -175,7 +175,7 @@ read_user_info(Username, Password) ->
         {atomic, [User]} ->
             case is_password_correct(User, Password) of
                 true ->
-                    User#ibo_user{password = undefined};    % retrieves user without password information
+                    override_password(User);
                 false ->
                     {error, "Wrong password"}
             end;
@@ -198,7 +198,7 @@ create_protected_password(ClearPassword) ->
     {ok, Key} = pbkdf2:pbkdf2(sha512, ClearPassword, Salt, Iterations, DerivedLength),
     {Salt, Key}.
 
-is_password_correct(User, ClearPassword)->
+is_password_correct(User, ClearPassword) ->
     Salt = element(1, User#ibo_user.password),
     StoredKey = element(2, User#ibo_user.password),
     Iterations = 20000,
@@ -206,3 +206,11 @@ is_password_correct(User, ClearPassword)->
     {ok, NewKey} = pbkdf2:pbkdf2(sha512, ClearPassword, Salt, Iterations, DerivedLength),
 
     NewKey =:= StoredKey.
+
+% overrides password but keeps the format intact, otherwise the record gets invalid
+override_password(List) when is_list(List) ->
+    [override_password(E) || E <- List];
+override_password(User) when is_record(User, ibo_user) ->
+    User#ibo_user{password = undefined};
+override_password(Else) when is_tuple(Else) ->  % do nothing if record isn't of type ibo_user
+    Else.

@@ -10,17 +10,18 @@
 -author("Florian").
 
 -include("xbo_ct_macros.hrl").
+-include("../src/directory/directory_records.hrl").
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
 -export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1,
     process_xbo_duplication_test/1,process_xbo_check_test/1,
-    get_boxindices_test/1]).
+    get_boxindices_test/1, get_boxindices_user_test/1]).
 
 all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test,
     process_xbo_duplication_test, process_xbo_check_test,
-    get_boxindices_test].
+    get_boxindices_test, get_boxindices_user_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -155,3 +156,13 @@ get_boxindices_test(_Config) ->
 
     [] = Response4 = box_server:get_boxindices(["blablub", "miau"]),
     ct_helper:print_var("Response1",Response4).
+
+get_boxindices_user_test(_Config) ->
+    XBOstepnr = 1,
+    ok = box_server:process_xbo(?XBO, XBOstepnr),
+    ok = box_server:process_xbo(?NEWGROUPXBO1, XBOstepnr),
+    ok = box_server:process_xbo(?NEWGROUPXBO2, XBOstepnr),
+
+    User = #ibo_user{username = <<"miau">>, firstname = <<"Mia">>, lastname = <<"Upurr">>, groups = ["marketing", "it"]},
+    Response1 = box_server:get_boxindices(User),
+    false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "production" end, Response1).

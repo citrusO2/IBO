@@ -27,7 +27,8 @@ start_link() ->
 %% ===================================================================
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
-        ?CHILD(directory_server, worker)
+        ?CHILD(directory_server, worker),
+        ?CHILD(box_server, worker)
     ]} }.
 
 %%%===================================================================

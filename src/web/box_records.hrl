@@ -34,6 +34,6 @@
 }).
 
 %% state of the boxserver
--record(ibo_boxserver_state, {
+-record(ibo_boxserver_state, {  % TODO put inside the server instead
    domain :: nonempty_string()
 }).

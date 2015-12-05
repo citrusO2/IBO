@@ -10,6 +10,7 @@
 -author("Florian").
 
 -include("directory/directory_records.hrl").
+-include("web/box_records.hrl").
 
 %% application -------------------------------------------------------
 -behaviour(application).
@@ -29,6 +30,14 @@ install(Nodes) ->
         [{attributes, record_info(fields, ibo_group)},
             {disc_copies, Nodes},
             {type, set}]),
+    mnesia:create_table(ibo_boxdata,
+        [{attributes, record_info(fields, ibo_boxdata)},
+            {disc_copies, Nodes},
+            {type, set}]),
+    mnesia:create_table(ibo_boxindex,
+        [{attributes, record_info(fields, ibo_boxindex)},
+            {disc_copies, Nodes},
+            {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]).
 
 start_dependencies() ->
@@ -43,15 +52,15 @@ start_web() ->
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
-            {"/api/box/overview", box_handler, []},
+            {"/api/box/[:box_path]", box_handler, []},
             {"/api", toppage_handler, []},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}
     ]),
     {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
         [{env, [{dispatch, Dispatch}]}]
-    ),
-    ok.
+    ).
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
@@ -61,5 +70,5 @@ start(_StartType, _StartArgs) ->
     ibo_sup:start_link().
 
 stop(_State) ->
-    % TODO stop cowboy
+    cowboy:stop_listener(http),
     ok.

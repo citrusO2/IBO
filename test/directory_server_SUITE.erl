@@ -107,6 +107,7 @@ search_user_test(_Config) ->
     [Record3] = directory_server:search_user("Dühr"),
     true = Record3 =:= ?NEWUSER,
     2 = length(directory_server:search_user("")),
+    2 = length(directory_server:search_user(<<"">>)),
 
     ct_helper:remove_record_from_mnesia(Record1),
     [Record3] = directory_server:search_user("r"),

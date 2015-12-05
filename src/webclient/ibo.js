@@ -5,8 +5,8 @@
 
     $.ajax({
         type: "GET",
-        url: "/api/box/overview",
-        dataType: 'text',
+        url: "/api/box",
+        dataType: 'json',   //'text|'json'
         headers: {
             "Authorization": "Basic " + window.btoa(username + ":" + password)
         }
