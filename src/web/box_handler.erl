@@ -37,13 +37,13 @@ is_authorized(Req, State) ->
             case directory_server:get_user_info(UserID,Password) of
                 User when is_tuple(User) andalso element(1,User) =:= ibo_user ->
                     {true, Req, #state{ibo_user = User}};
-                {error, Reason} ->
-                    {{false, <<"Basic realm=\"cowboy\", ", (list_to_binary(Reason))/binary>>}, Req, State};
+%%                {error, Reason} ->
+%%                    {{false, <<"Basic realm=\"cowboy\"">>}, Req, State};
                 _ ->
-                    {{false, <<"Basic realm=\"cowboy\", unknown error">>}, Req, State}
+                    {{false, <<"Basic realm=\"cowboy\"">>}, Req, State}
             end;
         _ ->
-            {{false, <<"Basic realm=\"cowboy\", authorization missing in header">>}, Req, State}
+            {{false, <<"Basic realm=\"cowboy\"">>}, Req, State}
     end.
 
 %% step is immediately followed after authentication
