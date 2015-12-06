@@ -10,7 +10,7 @@
 -author("Florian").
 
 -include("directory/directory_records.hrl").
--include("web/box_records.hrl").
+-include("box/box_records.hrl").
 
 %% application -------------------------------------------------------
 -behaviour(application).
@@ -53,7 +53,7 @@ start_web() ->
         {'_', [
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
             {"/api/box/[:box_path]", box_handler, []},
-            {"/api", toppage_handler, []},
+            {"/api/directory/[:user_path]", directory_handler, []},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}
     ]),

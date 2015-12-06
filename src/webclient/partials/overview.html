@@ -1,1 +1,30 @@
+<div class="alert alert-danger" data-ng-show="error">
+    <strong>Error</strong> {{error}}
+</div>
 <h1 class="page-header">Overview - Welcome, {{user.firstname}}</h1>
+<p>
+    Here you can see an overview of your open tasks
+</p>
+
+<div data-ng-repeat="index in indices">
+    <h2 class="sub-header">{{index.groupname}}</h2>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Task</th>
+                <th>Description</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr data-ng-repeat="task in index.xbolist">
+                <td>{{task.storedate}}</td>
+                <td>{{task.xbotemplate}}</td>
+                <td>{{task.xbostepdescription}}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

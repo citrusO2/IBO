@@ -20,3 +20,26 @@ directory_server:write_group({ibo_group,<<"acme">>,<<"Main Group of ACME Incorpo
 directory_server:write_group({ibo_group,<<"marketing">>,<<"Marketing Department Group">>, <<"acme">>}).
 directory_server:write_group({ibo_group,<<"it">>,<<"Marketing Department Group">>, <<"acme">>}).
 directory_server:write_group({ibo_group,<<"admins">>,<<"IT Department Group">>, <<"it">>}).
+
+rr("src/xbo/xbo_records.hrl").
+
+MyRecord = #ibo_xbo{
+               id = <<"1-141233">>,
+               format_indicator = 1,
+               created_by = <<"hanswurst">>,
+               template = <<"marketingbudgetdecision">>,
+               steps = [#ibo_xbostep{
+                   domain = "box_server",
+                   local = <<"marketing">>,
+                   description = <<"Accept or deny the marketing budget">>,
+                   commands = [
+                       #ibo_xboline{
+                           library = "TEST",
+                           command = "testcommand",
+                           args = "testarg"
+                       }
+                   ]
+               }]
+           }.
+
+box_server:process_xbo(MyRecord, 1).

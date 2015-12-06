@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
--include("../src/web/box_records.hrl").
+-include("../src/box/box_records.hrl").
 -define(XBO, #ibo_xbo{
     id = "1-141232",
     format_indicator = 1,

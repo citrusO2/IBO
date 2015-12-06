@@ -39,7 +39,7 @@
                 login: function(username, password, success, error) {
                     createHeader(username, password);
 
-                    $http.get('/api/box', currentHeader).then(
+                    $http.get('/api/directory', currentHeader).then(
                         function(res){
                             currentUser = res.data;
                             success = success || $.noop;
@@ -64,7 +64,7 @@
     iboApp.run(['$rootScope', '$location', 'AuthService', function ($rootScope, $location, AuthService) {
         $rootScope.$on('$routeChangeStart', function (event, next, data2) {
             if (!AuthService.isLoggedIn()) {
-                if(next.$$route.originalPath != '/login'){
+                if(next.$$route && next.$$route.originalPath != '/login'){
                     event.preventDefault();
                     $location.path('/login');
                 }

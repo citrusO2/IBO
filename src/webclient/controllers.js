@@ -47,9 +47,19 @@
         }
     ]);
 
-    iboControllers.controller('OverviewCtrl', ['$scope', 'AuthService',
-        function ($scope, AuthService) {
+    iboControllers.controller('OverviewCtrl', ['$scope', 'AuthService', '$http',
+        function ($scope, AuthService, $http) {
             $scope.user = AuthService.currentUser();
+            $scope.indices = null;
+            $scope.error = null;
+
+            $http.get('/api/box', AuthService.currentHeader()).then(
+                function(res){
+                    $scope.indices = res.data;
+                },function(res){
+                    $scope.error = "Could not retrieve box-indices!";
+                }
+            );
         }
     ]);
 
