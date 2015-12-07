@@ -7,13 +7,16 @@
         function($routeProvider) {
             $routeProvider.when('/login', {
                 templateUrl: 'partials/dummy.html',
-                controller: 'NoOpCtrl'
+                controller: 'NoOpCtrl',
+                activenav: 'none'
             }).when('/overview', {
                 templateUrl: 'partials/overview.html',
-                controller: 'OverviewCtrl'
+                controller: 'OverviewCtrl',
+                activenav: 'overview'
             }).when('/box/:xboId', {
                 templateUrl: 'partials/boxdetail.html',
-                controller: 'BoxdetailCtrl'
+                controller: 'BoxdetailCtrl',
+                activenav: 'detail'
             }).otherwise({
                 redirectTo: '/login'
             });
@@ -61,6 +64,16 @@
         }
     ]);
 
+    iboApp.factory('DataService', ['$rootScope',
+        function($rootScope){
+            return{
+                broadcastindices: function(indices){
+                    $rootScope.$broadcast('indicesChange', indices)
+                }
+            }
+        }
+    ])
+
     iboApp.run(['$rootScope', '$location', 'AuthService', function ($rootScope, $location, AuthService) {
         $rootScope.$on('$routeChangeStart', function (event, next, data2) {
             if (!AuthService.isLoggedIn()) {
@@ -70,12 +83,31 @@
                 }
             }
             else {
-                if(next.$$route.originalPath == '/login'){
+                if(next.$$route && next.$$route.originalPath == '/login'){
                     event.preventDefault();
                     $location.path('/overview');
                 }
             }
         });
+    }]);
+
+    iboApp.directive('activeLink', ['$location', function (location) {
+        return {
+            restrict: 'A',
+            link: function(scope, element, attrs, controller) {
+                var clazz = attrs.activeLink;
+                var path = attrs.href;
+                path = path.substring(1); //hack because path does not return including hashbang
+                scope.location = location;
+                scope.$watch('location.path()', function (newPath) {
+                    if (path === newPath) {
+                        element.parent().addClass(clazz);
+                    } else {
+                        element.parent().removeClass(clazz);
+                    }
+                });
+            }
+        };
     }]);
 
 })();

@@ -16,10 +16,14 @@ mnesia:transaction(F),
 directory_server:get_user("ff").
 
 directory_server:create_user({ibo_user,<<"tu">>,<<"Theodor">>,<<"Urula">>,[<<"marketing">>,<<"admins">>],undefined},<<"pass123">>).
+directory_server:create_user({ibo_user,<<"fu">>,<<"Fabian">>,<<"Ustafa">>,[<<"it">>],undefined},<<"pass123">>).
 directory_server:write_group({ibo_group,<<"acme">>,<<"Main Group of ACME Incorporated">>, undefined}).
 directory_server:write_group({ibo_group,<<"marketing">>,<<"Marketing Department Group">>, <<"acme">>}).
 directory_server:write_group({ibo_group,<<"it">>,<<"Marketing Department Group">>, <<"acme">>}).
 directory_server:write_group({ibo_group,<<"admins">>,<<"IT Department Group">>, <<"it">>}).
+
+mnesia:clear_table(ibo_boxindex).
+mnesia:clear_table(ibo_boxdata).
 
 rr("src/xbo/xbo_records.hrl").
 
@@ -29,14 +33,31 @@ MyRecord = #ibo_xbo{
                created_by = <<"hanswurst">>,
                template = <<"marketingbudgetdecision">>,
                steps = [#ibo_xbostep{
-                   domain = "box_server",
+                   domain = <<"box_server">>,
                    local = <<"marketing">>,
                    description = <<"Accept or deny the marketing budget">>,
                    commands = [
                        #ibo_xboline{
-                           library = "TEST",
-                           command = "testcommand",
-                           args = "testarg"
+                           library = xlib_box,
+                           command = webinit,
+                           args = [
+                                #{
+                                    description => <<"Approve the current marketing budget of 250.000€">>,
+                                    schema => #{
+                                        <<"reason">> => #{
+                                            <<"title">> => <<"Reason">>,
+                                            <<"description">> => <<"The reason for your decision">>,
+                                            <<"type">> => <<"string">>
+                                        },
+                                        <<"yesno">> => #{
+                                            <<"title">> => <<"Decide">>,
+                                            <<"description">> => <<"tick your decision">>,
+                                            <<"type">> => <<"string">>,
+                                            <<"enum">> => [<<"no">>,<<"yes">>,<<"maybe">>]
+                                        }
+                                    }
+                                }
+                           ]
                        }
                    ]
                }]

@@ -9,8 +9,8 @@
 -module(box_server).
 -author("Florian").
 
--include("box_records.hrl").
 -include("../directory/directory_records.hrl").
+-include("../xlib/xlib_state.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -behaviour(xbo_endpoint_behaviour).
 
@@ -20,7 +20,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, process_xbo/2, get_boxindices/1]).
+-export([start_link/0, stop/0, process_xbo/2, get_boxindices/1, get_webinit/1]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -36,13 +36,16 @@ get_boxindices(GroupNameList) when is_list(GroupNameList) ->
 get_boxindices(User) when is_record(User, ibo_user) ->
     get_boxindices(User#ibo_user.groups).
 
+get_webinit(XBOid) ->   % first ibo_xboline in ibo_xbostep to initialize the steps for the web-access
+    gen_server:call(?MODULE, {get_webinit, XBOid}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
 init([]) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     io:format("~p starting~n", [?MODULE]),
-    {ok, #ibo_boxserver_state{domain = atom_to_list(?MODULE)}}. % initial state
+    {ok, #ibo_boxserver_state{domain = list_to_binary(atom_to_list(?MODULE))}}. % initial state
 
 handle_call({process_xbo, XBO, StepNr}, _From, State) ->
     try check_xbo(XBO, StepNr, State) of
@@ -54,6 +57,16 @@ handle_call({process_xbo, XBO, StepNr}, _From, State) ->
     end;
 handle_call({get_boxindices, GroupNameList}, _From, State) ->
     {reply, read_boxindices(GroupNameList), State};
+handle_call({get_webinit, XBOid}, _From, State) ->
+    case read_transactional(ibo_boxdata, XBOid) of
+        not_found ->
+            {reply, {error,not_found}, State};
+        {error, Reason} ->
+            {reply, {error,Reason}, State};
+        Boxdata ->
+            Config = get_webinit_conf(Boxdata),
+            {reply, xlib_box:webinit(Config), State}
+    end;
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
@@ -148,3 +161,18 @@ is_key_in_table(Table, Key) ->
         {atomic, []} -> false;
         _ -> throw("Cannot check if Key is in Table")
     end.
+
+read_transactional(Table, Key) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:read(Table, Key)
+        end),
+    case Res of
+        {atomic, [Record]} -> Record;
+        {atomic, []} -> not_found;
+        _ -> {error, "Read failure"}
+    end.
+
+get_webinit_conf(Boxdata) ->
+    Stepdata = #ibo_xbostepdata{stepnr = Boxdata#ibo_boxdata.xbostepnr},
+    #xlib_state{current_linenr = 1, xbo = Boxdata#ibo_boxdata.xbodata, current_stepdata = Stepdata}.

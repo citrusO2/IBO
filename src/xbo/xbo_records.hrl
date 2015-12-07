@@ -8,11 +8,14 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
+%%-define(xbo_records_include, true).
+
+
 -type timestamp() :: {non_neg_integer(),non_neg_integer(), non_neg_integer() }.
 
 -record(ibo_xboline, {
-    library :: nonempty_string(),
-    command :: nonempty_string(),
+    library :: atom(),
+    command :: atom(),
     args :: any()
 }).
 
@@ -27,7 +30,7 @@
 
 -record(ibo_xbostepdata, {
     create_time = os:timestamp() :: timestamp(),
-    stepnr :: nonempty_string(),
+    stepnr :: non_neg_integer(),
     vars = [] :: list({nonempty_string(), any()})    % variables stored in this step
 }).
 

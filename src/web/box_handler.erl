@@ -16,7 +16,7 @@
 -record(state, {
     type :: undefined | overview | detail,
     ibo_user :: #ibo_user{} | undefined,
-    ibo_boxdata :: #ibo_boxdata{} | undefined,
+    ibo_boxdetail :: any() | undefined,
     ibo_boxindices :: [#ibo_boxindex{}] | undefined
 }).
 
@@ -55,15 +55,25 @@ forbidden(Req, State) ->
                 type = overview
             },
             {false, Req, NewState};
-        _XboID ->
-            {true, Req, State#state{type = detail}} % TODO: implement retrieving one instance of type ibo_boxdata
-        % retrieve detail and check if the user has access to it
-        % if not found -> send err404 and return {stop,Req,State}
-        % if no access -> return false, otherwise true
-%%            case valid_path(PasteID) and file_exists(PasteID) of
-%%                true -> {true, Req, PasteID};
-%%                false -> {false, Req, PasteID}
-%%            end
+        XboID ->
+            io:format("XboID>>>~p~n", [XboID]),
+            case box_server:get_webinit(XboID) of
+                {error, not_found} ->
+                    {ok, Req2} = cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"id not found\"}">>, Req),
+                    {stop, Req2, State};
+                {error, _Reason} ->
+                    {ok, Req2} = cowboy_req:reply(500, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"db problem\"}">>, Req),
+                    {stop, Req2, State};
+                Data ->
+                    io:format("Data>>>~p~n", [Data]),
+                    {Group, Args} = Data,
+                    case lists:member(Group, State#state.ibo_user#ibo_user.groups) of
+                        true ->
+                            {false, Req, State#state{type = detail, ibo_boxdetail = Args}};
+                        false ->
+                            {true, Req, State#state{type = detail, ibo_boxdetail = Args}}
+                    end
+            end
     end.
 
 %% ------------------------
@@ -74,6 +84,10 @@ content_types_provided(Req, State) ->
     ], Req, State}.
 
 to_json(Req, State) when State#state.type =:= overview ->
-    PrepareData = [ json_helper:prepare(E) || E <-State#state.ibo_boxindices],
+    PrepareData = [json_helper:prepare(E) || E <- State#state.ibo_boxindices],
+    Body = jsx:encode(PrepareData),
+    {Body, Req, State};
+to_json(Req, State) when State#state.type =:= detail ->
+    PrepareData = State#state.ibo_boxdetail,
     Body = jsx:encode(PrepareData),
     {Body, Req, State}.

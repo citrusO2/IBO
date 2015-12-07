@@ -47,8 +47,23 @@
         }
     ]);
 
-    iboControllers.controller('OverviewCtrl', ['$scope', 'AuthService', '$http',
-        function ($scope, AuthService, $http) {
+    iboControllers.controller('NavCtrl', ['$scope',
+        function($scope) {
+            $scope.tasks = [];
+
+            $scope.$on('indicesChange', function(event, indices) {
+                $scope.tasks = [];
+                indices.forEach( function(index){
+                    angular.forEach(index.xbolist, function(task, i){
+                        $scope.tasks.push(task);
+                    });
+                });
+            });
+        }
+    ]);
+
+    iboControllers.controller('OverviewCtrl', ['$scope', 'AuthService', '$http', 'DataService',
+        function ($scope, AuthService, $http, DataService) {
             $scope.user = AuthService.currentUser();
             $scope.indices = null;
             $scope.error = null;
@@ -56,6 +71,14 @@
             $http.get('/api/box', AuthService.currentHeader()).then(
                 function(res){
                     $scope.indices = res.data;
+                    DataService.broadcastindices($scope.indices)
+//                    var nav = $('#activeTasks');
+//                    nav.empty();
+//                    $scope.indices.forEach( function(index){
+//                        angular.forEach(index.xbolist, function(task, i){
+//                            nav.append($compile("<li><a href=\"#/box/" + task.xboid + "\" data-active-link=\"active\">" + task.xbotemplate + "</a></li>") );
+//                        });
+//                    });
                 },function(res){
                     $scope.error = "Could not retrieve box-indices!";
                 }
@@ -63,9 +86,24 @@
         }
     ]);
 
-    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams',
-        function($scope, $routeParams) {
+    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService',
+        function($scope, $routeParams, $http, AuthService) {
             $scope.xboId = $routeParams.xboId;
+            $scope.error = null;
+
+            $http.get('/api/box/' + $scope.xboId, AuthService.currentHeader()).then(
+                function(res){
+                    $scope.args = res.data;
+                },function(res){
+                    $scope.error = "Could not retrieve args for the box!<br>";
+                    if(res.status == 500)
+                        $scope.error += "Internal server error (500)";
+                    else if(res.status == 404)
+                        $scope.error += "Cannot find the requested resource (404)";
+                    else if(res.status == 403)
+                        $scope.error += "You do not have access the requested resource (403)";
+                }
+            );
         }
     ]);
 

@@ -17,11 +17,11 @@
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
 -export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1,
     process_xbo_duplication_test/1,process_xbo_check_test/1,
-    get_boxindices_test/1, get_boxindices_user_test/1]).
+    get_boxindices_test/1, get_boxindices_user_test/1, get_webinit_test/1]).
 
 all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test,
     process_xbo_duplication_test, process_xbo_check_test,
-    get_boxindices_test, get_boxindices_user_test].
+    get_boxindices_test, get_boxindices_user_test, get_webinit_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -142,20 +142,26 @@ get_boxindices_test(_Config) ->
     ok = box_server:process_xbo(?NEWGROUPXBO1, XBOstepnr),
     ok = box_server:process_xbo(?NEWGROUPXBO2, XBOstepnr),
 
-    Response1 = box_server:get_boxindices(["marketing", "it"]),
-    false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "production" end, Response1),
+    Response1 = box_server:get_boxindices([<<"marketing">>, <<"it">>]),
+    false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= <<"production">> end, Response1),
+    2 = erlang:length(Response1),
     ct_helper:print_var("Response1",Response1),
 
-    Response2 = box_server:get_boxindices(["marketing", "production"]),
+    Response2 = box_server:get_boxindices([<<"marketing">>, <<"production">>]),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "it" end, Response2),
+    2 = erlang:length(Response2),
     ct_helper:print_var("Response2",Response2),
 
-    Response3 = box_server:get_boxindices(["production", "it"]),
+    Response3 = box_server:get_boxindices([<<"production">>, <<"it">>]),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "marketing" end, Response3),
+    2 = erlang:length(Response3),
     ct_helper:print_var("Response3",Response3),
 
-    [] = Response4 = box_server:get_boxindices(["blablub", "miau"]),
-    ct_helper:print_var("Response1",Response4).
+    [] = Response4 = box_server:get_boxindices([<<"blablub">>, <<"miau">>]),
+    ct_helper:print_var("Response1",Response4),
+
+    Response5 = box_server:get_boxindices([<<"marketing">>]),
+    true = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= <<"marketing">> end, Response5).
 
 get_boxindices_user_test(_Config) ->
     XBOstepnr = 1,
@@ -166,3 +172,16 @@ get_boxindices_user_test(_Config) ->
     User = #ibo_user{username = <<"miau">>, firstname = <<"Mia">>, lastname = <<"Upurr">>, groups = ["marketing", "it"]},
     Response1 = box_server:get_boxindices(User),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "production" end, Response1).
+
+get_webinit_test(_Config) ->
+    XBOstepnr = 1,
+    XBO = ?NEWXBO,
+    ok = box_server:process_xbo(XBO, XBOstepnr),
+
+    Response1 = box_server:get_webinit(XBO#ibo_xbo.id),
+
+    Step = lists:nth(1, XBO#ibo_xbo.steps),
+    Group = Step#ibo_xbostep.local,
+    Commands = lists:nth(1, Step#ibo_xbostep.commands),
+    Args = Commands#ibo_xboline.args,
+    {Group, Args} = Response1.
