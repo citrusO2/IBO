@@ -1,6 +1,8 @@
 <div class="alert alert-danger" data-ng-show="error">
     <strong>Error</strong> {{error}}
 </div>
-<h1 class="page-header">Boxdetail - Welcome, {{user.firstname}}</h1>
+<h1 class="page-header">{{schema.title}}</h1>
 
-<p>Hier sollten die Args stehen: <br>{{args}}</p>
+<p>{{schema.description}}</p>
+
+<form data-sf-schema="schema" data-sf-form="form" data-sf-model="model" name="boxdetailform" data-ng-submit="onSubmit(boxdetailform)"></form>

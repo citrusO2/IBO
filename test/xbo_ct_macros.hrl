@@ -43,8 +43,10 @@
                 command = webinit,
                 args = [
                     #{
-                        description => <<"Approve the current marketing budget of 250.000€">>,
-                        schema => #{
+                        <<"title">> => <<"Marketing Budget - Decision">>,
+                        <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+                        <<"type">> => <<"object">>,
+                        <<"properties">> => #{
                             <<"reason">> => #{
                                 <<"title">> => <<"Reason">>,
                                 <<"description">> => <<"The reason for your decision">>,
@@ -56,7 +58,8 @@
                                 <<"type">> => <<"string">>,
                                 <<"enum">> => [<<"no">>,<<"yes">>,<<"maybe">>]
                             }
-                        }
+                        },
+                        <<"required">> => [<<"reason">>, <<"yesno">>]
                     }
                 ]
             }

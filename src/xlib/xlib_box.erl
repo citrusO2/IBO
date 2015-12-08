@@ -22,6 +22,6 @@ webinit(State) ->
     Step = lists:nth(State#xlib_state.current_stepdata#ibo_xbostepdata.stepnr,
         State#xlib_state.xbo#ibo_xbo.steps),
     Group = Step#ibo_xbostep.local,
-    Taskdetails = (lists:nth(1, Step#ibo_xbostep.commands))#ibo_xboline.args,
+    [Taskdetails|_] = (lists:nth(1, Step#ibo_xbostep.commands))#ibo_xboline.args,
 
     {Group, Taskdetails}.

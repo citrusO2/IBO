@@ -183,5 +183,5 @@ get_webinit_test(_Config) ->
     Step = lists:nth(1, XBO#ibo_xbo.steps),
     Group = Step#ibo_xbostep.local,
     Commands = lists:nth(1, Step#ibo_xbostep.commands),
-    Args = Commands#ibo_xboline.args,
-    {Group, Args} = Response1.
+    [Schema|_] = Commands#ibo_xboline.args,
+    {Group, Schema} = Response1.

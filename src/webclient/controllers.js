@@ -93,7 +93,27 @@
 
             $http.get('/api/box/' + $scope.xboId, AuthService.currentHeader()).then(
                 function(res){
-                    $scope.args = res.data;
+                    $scope.schema = res.data
+
+                    $scope.form = [
+                        "*",
+                        {
+                          type: "submit",
+                          title: "Send"
+                        }
+                    ];
+                    $scope.model = {};
+
+                    $scope.onSubmit = function(form) {
+                        // First we broadcast an event so all fields validate themselves
+                        $scope.$broadcast('schemaFormValidate');
+
+                        // Then we check if the form is valid
+                        if (form.$valid) {
+                            console.log($scope.model);
+                        }
+                    }
+
                 },function(res){
                     $scope.error = "Could not retrieve args for the box!<br>";
                     if(res.status == 500)
