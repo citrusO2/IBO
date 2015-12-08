@@ -14,9 +14,9 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([validate_schema_test/1]).
+-export([validate_schema_test/1,validate_schema_data_test/1]).
 
-all() -> [validate_schema_test].
+all() -> [validate_schema_test, validate_schema_data_test].
 
 init_per_suite(Config) ->
     Config.
@@ -46,3 +46,31 @@ validate_schema_test(_Config)->
     false = schema_validator:is_valid_schema(?TESTSCHEMA9),
     false = schema_validator:is_valid_schema(?TESTSCHEMA10),
     false = schema_validator:is_valid_schema(?TESTSCHEMA11).
+
+validate_schema_data_test(_Config)->
+    Data1 = #{<<"reason">> => <<"DecisionReason">>, <<"yesno">> => <<"yes">>},
+    true = schema_validator:is_valid_data(?TESTSCHEMA1,Data1),
+
+    Data2 = #{<<"reason">> => <<"DecisionReason">>, <<"yesno">> => <<"haha">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data2),
+
+    Data3 = #{<<"yesno">> => <<"yes">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data3),
+
+    Data4 = #{<<"reason">> => <<"DecisionReason">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data4),
+
+    Data5 = #{<<"reason">> => 25, <<"yesno">> => <<"yes">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data5),
+
+    Data6 = #{<<"reason">> => true, <<"yesno">> => <<"yes">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data6),
+
+    Data7 = #{<<"reason">> => [<<"DecisionReason">>], <<"yesno">> => <<"yes">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data7),
+
+    Data8 = #{<<"reason">> => null, <<"yesno">> => <<"yes">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data8),
+
+    Data9 = #{<<"reason">> =>#{<<"properties">> => <<"DecisionReason">>}, <<"yesno">> => <<"yes">>},
+    false = schema_validator:is_valid_data(?TESTSCHEMA1,Data9).
