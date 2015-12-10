@@ -51,7 +51,7 @@ validate_schema_test(_Config) ->
     {error, {"description has to be of type binary", 2312}} = schema_validator:validate_schema(TS2),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS3}} = schema_validator:validate_schema(TS3),
     {error, {"title has to be of type binary", true}} = schema_validator:validate_schema(TS4),
-    {error, {"enum elements have to be of type binary", [3, <<"yes">>, <<"maybe">>]}} = schema_validator:validate_schema(TS5),
+    {ok, TS5} = schema_validator:validate_schema(TS5),
     {error, {"required elements must match the keys in properties", [<<"wuhaha">>, <<"yesno">>]}} = schema_validator:validate_schema(TS6),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS7}} = schema_validator:validate_schema(TS7),
     {ok, TS8} = schema_validator:validate_schema(TS8),
@@ -81,7 +81,7 @@ validate_schema_data_test(_Config) ->
     ResSchema5 = #{<<"description">> => <<"The reason for your decision">>,
         <<"title">> => <<"Reason">>,
         <<"type">> => <<"string">>},
-    {error, {"the given value is of type integer, but the schema is not of type integer", {ResSchema5, 25}}} = schema_validator:validate_data(?TESTSCHEMA1, Data5),
+    {error, {"the given value is of type integer, but the schema is not of type integer or number", {ResSchema5, 25}}} = schema_validator:validate_data(?TESTSCHEMA1, Data5),
 
     ResSchema6 = ResSchema5,
     Data6 = #{<<"reason">> => true, <<"yesno">> => <<"yes">>},

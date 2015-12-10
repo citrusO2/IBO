@@ -11,9 +11,6 @@
 
 -include("schema_validator_macros.hrl").
 
--define(CT(ThrowReason, ProblemValue, Expression),
-    case Expression of true -> true;_ -> throw({ThrowReason, ProblemValue}) end).
-
 %% API
 -export([validate_schema/1, validate_data/2, validate_schema_and_data/2]).
 
@@ -45,21 +42,20 @@ validate_data(Schema, Data) ->
 
 %% Validating Schema -------------------------------------------------
 %CMap = current map = parent map of current element
-validate_keyvalue(<<"title">>, Title, _CMap) ->
+validate_keyvalue(?TITLE, Title, _CMap) ->
     ?CT("title has to be of type binary", Title, is_binary(Title));
-validate_keyvalue(<<"description">>, Description, _CMap) ->
+validate_keyvalue(?DESCRIPTION, Description, _CMap) ->
     ?CT("description has to be of type binary", Description, is_binary(Description));
 validate_keyvalue(?TYPE, Type, _CMap) ->
     ?CT("type has to be one of the following: object, string, number, boolean, array, null", Type,
         lists:member(Type, [?OBJECT, ?STRING, ?NUMBER, ?BOOLEAN, ?ARRAY, ?NULL]));
 validate_keyvalue(?REQUIRED, List, CMap) ->
-    ?CT("required has to be of type list", List, is_list(List)) andalso
-        ?CT("required elements have to be of type binary", List, lists:all(fun(E) -> is_binary(E) end, List)) andalso
+    ?MUSTBELIST(List,"required") andalso ?ATLEASTONE(List, "required") andalso
+        ?ALLOFTYPEBINARY(List, "required") andalso ?UNIQUE(List, "required") andalso
         ?CT("required elements must match the keys in properties", List, lists:all(fun(E) ->
-            lists:member(E, List) end, maps:keys(maps:get(?PROPERTIES, CMap))));    % required has to match the keys in properties
+            lists:member(E, List) end, maps:keys(maps:get(?PROPERTIES, CMap))));    % required has to match the keys in properties (NOT IN THE DRAFT!!)
 validate_keyvalue(?ENUM, List, _CMap) ->
-    ?CT("enum has to be of type list", List, is_list(List)) andalso
-        ?CT("enum elements have to be of type binary", List, lists:all(fun(E) -> is_binary(E) end, List));
+    ?MUSTBELIST(List, "enum") andalso ?ATLEASTONE(List, "enum") andalso ?UNIQUE(List, "enum");
 validate_keyvalue(Key, Map, _CMap) when is_map(Map) ->
     validate_map(Map, Key).
 
@@ -108,7 +104,7 @@ validate(Schema, Value) when is_binary(Value) ->
             end
     end;
 validate(Schema, Value) when is_integer(Value) ->
-    ?CT("the given value is of type integer, but the schema is not of type integer", {Schema, Value}, maps:get(?TYPE, Schema) =:= ?INTEGER);
+    ?CT("the given value is of type integer, but the schema is not of type integer or number", {Schema, Value}, maps:get(?TYPE, Schema) =:= ?INTEGER orelse maps:get(?TYPE, Schema) =:= ?NUMBER);
 validate(Schema, Value) when is_number(Value) ->
     ?CT("the given value is of type number, but the schema is not of type number", {Schema, Value}, maps:get(?TYPE, Schema) =:= ?NUMBER);
 validate(Schema, Value) when is_boolean(Value) ->
