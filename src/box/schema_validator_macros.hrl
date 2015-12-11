@@ -15,10 +15,13 @@
 -define(ATLEASTONE_TEXT, " must have at least one element").
 -define(UNIQUE_TEXT, "'s elements must all be unique").
 -define(ALLOFTYPELIST_TEXT, "'s elements must all be of type list").
+-define(ATLEASTZEROLENGTH_TEXT, " value must be greater or equal to zero").
 
 -define(VALIDATE_FIELD_TYPE_TEXT, "field \"type\" requires the type ").
 -define(VALIDATE_FIELD_REQUIRED_TEXT, "field \"required\" requires certain keys to exist").
 -define(VALIDATE_FIELD_ENUM_TEXT, "field \"enum\" requires certain values").
+-define(VALIDATE_FIELD_MINLENGTH_TEXT, "field \"minlength\" requires the string to have a certain length").
+-define(VALIDATE_FIELD_MAXLENGTH_TEXT, "field \"maxlength\" requires the string to have a certain length").
 
 -define(ATLEASTONE(List, VariableName), ?CT(VariableName ++ ?ATLEASTONE_TEXT, List, erlang:length(List) >= 1)).
 -define(UNIQUE(List, VariableName), ?CT(VariableName ++ ?UNIQUE_TEXT, List, erlang:length(List) == sets:size(sets:from_list(List)))).
@@ -28,7 +31,10 @@
 -define(MUSTBETYPE(Var, VariableName, TypeName, Expression), ?CT(VariableName ++ ?MUSTBETYPE_TEXT ++ TypeName, Var, Expression)).
 -define(MUSTBELIST(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "list", is_list(Var))).
 -define(MUSTBEBINARY(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "binary", is_binary(Var))).
+-define(MUSTBEINTEGER(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "integer", is_integer(Var))).
 -define(MUSTBEPRIMITIVETYPE(Type), ?MUSTBETYPE(Type, "type", "primitive", lists:member(Type, [?OBJECT, ?STRING, ?NUMBER, ?BOOLEAN, ?ARRAY, ?NULL, ?INTEGER]))).
+
+-define(ATLEASTZEROLENGTH(Var, VariableName), ?CT(VariableName ++ ?ATLEASTZEROLENGTH_TEXT, Var, Var >= 0)).
 
 -define(VALIDATE_FIELD_TYPE(Schema, Variable, TypeName, TypeIdentifier), ?CT(?VALIDATE_FIELD_TYPE_TEXT ++ TypeName, {Schema, Variable}, not (maps:is_key(?TYPE, Schema)) orelse lists:member(TypeIdentifier, (case maps:get(?TYPE, Schema) of List when is_list(List) ->
     List; Else -> [Else] end)))).
@@ -48,6 +54,13 @@
 
 -define(VALIDATE_FIELD_REQUIRED(Schema, Variable), ?CT(?VALIDATE_FIELD_REQUIRED_TEXT, {maps:get(?REQUIRED, Schema), Variable}, not (maps:is_key(?REQUIRED, Schema)) orelse lists:all(fun(E) ->
     lists:member(E, maps:keys(Variable)) end, maps:get(?REQUIRED, Schema)))).
+
+-define(VALIDATE_FIELD_MINLENGTH(Schema, Variable), ?CT(?VALIDATE_FIELD_MINLENGTH_TEXT, {maps:get(?MINLENGTH, Schema), Variable}, not (maps:is_key(?MINLENGTH, Schema)) orelse (
+     maps:get(?MINLENGTH, Schema) =< erlang:length(binary:bin_to_list(Variable))
+))).
+-define(VALIDATE_FIELD_MAXLENGTH(Schema, Variable), ?CT(?VALIDATE_FIELD_MAXLENGTH_TEXT, {maps:get(?MAXLENGTH, Schema), Variable}, not (maps:is_key(?MAXLENGTH, Schema)) orelse (
+    maps:get(?MAXLENGTH, Schema) >= erlang:length(binary:bin_to_list(Variable))
+))).
 
 -define(VALIDATE_MATCHING_PROPERTIES(Schema, Variable),
     ?CT("the given value-map contains more properties than defined in the properties-map", {maps:get(?PROPERTIES, Schema), ValuesMap}, not (maps:is_key(?PROPERTIES, Schema)) orelse lists:all(fun(E) ->
@@ -120,7 +133,7 @@
 %% 5.2.1.2.  Conditions for successful validation
 %%      A string instance is valid against this keyword if its length is less than, or equal to, the value of this keyword.
 %%      The length of a string instance is defined as the number of its characters as defined by RFC 4627 [RFC4627].
--define(MAXLENGTH,  <<"maxLength">>).   % NOT IMPLEMENTED YET
+-define(MAXLENGTH,  <<"maxLength">>).
 
 %% 5.2.2.  minLength
 %% 5.2.2.1.  Valid values
@@ -130,7 +143,7 @@
 %%      The length of a string instance is defined as the number of its characters as defined by RFC 4627 [RFC4627].
 %% 5.2.2.3.  Default value
 %%      "minLength", if absent, may be considered as being present with integer value 0.
--define(MINLENGTH,  <<"minLength">>).   % NOT IMPLEMENTED YET
+-define(MINLENGTH,  <<"minLength">>).
 
 %% 5.2.3.  pattern
 %% 5.2.3.1.  Valid values

@@ -57,6 +57,12 @@ validate_keyvalue(?REQUIRED, List, CMap) ->
             lists:member(E, List) end, maps:keys(maps:get(?PROPERTIES, CMap))));    % required has to match the keys in properties (NOT IN THE DRAFT!!)
 validate_keyvalue(?ENUM, List, _CMap) ->
     ?MUSTBELIST(List, "enum") andalso ?ATLEASTONE(List, "enum") andalso ?UNIQUE(List, "enum");
+validate_keyvalue(?MINLENGTH, Length, _CMap) ->
+    ?MUSTBEINTEGER(Length, "minlength"),
+    ?ATLEASTZEROLENGTH(Length, "minlength");
+validate_keyvalue(?MAXLENGTH, Length, _CMap) ->
+    ?MUSTBEINTEGER(Length, "maxlength"),
+    ?ATLEASTZEROLENGTH(Length, "maxlength");
 validate_keyvalue(Key, Map, _CMap) when is_map(Map) ->
     validate_map(Map, Key).
 
@@ -102,7 +108,9 @@ validate(Schema, ValuesMap) when is_map(ValuesMap) ->
     end;
 validate(Schema, Value) when is_binary(Value) ->
     ?VALIDATE_FIELD_TYPE_BINARY(Schema, Value),
-    ?VALIDATE_FIELD_ENUM(Schema, Value);
+    ?VALIDATE_FIELD_ENUM(Schema, Value),
+    ?VALIDATE_FIELD_MINLENGTH(Schema, Value),
+    ?VALIDATE_FIELD_MAXLENGTH(Schema, Value);
 validate(Schema, Value) when is_integer(Value) ->
     ?VALIDATE_FIELD_TYPE_INTEGER_OR_NUMBER(Schema, Value),
     ?VALIDATE_FIELD_ENUM(Schema, Value);

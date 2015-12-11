@@ -46,6 +46,7 @@ validate_schema_test(_Config) ->
     TS9 = ?TESTSCHEMA9,
     TS10 = ?TESTSCHEMA10,
     TS11 = ?TESTSCHEMA11,
+    TS12 = ?TESTSCHEMA12,
 
     {ok, TS1} = schema_validator:validate_schema(TS1),
     {error, {"description must be of type binary", 2312}} = schema_validator:validate_schema(TS2),
@@ -57,7 +58,8 @@ validate_schema_test(_Config) ->
     {ok, TS8} = schema_validator:validate_schema(TS8),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS9}} = schema_validator:validate_schema(TS9),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS10}} = schema_validator:validate_schema(TS10),
-    {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS11}} = schema_validator:validate_schema(TS11).
+    {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS11}} = schema_validator:validate_schema(TS11),
+    {ok, TS12} = schema_validator:validate_schema(TS12).
 
 validate_schema_data_test(_Config) ->
     Data1 = #{<<"reason">> => <<"DecisionReason">>, <<"yesno">> => <<"yes">>},
@@ -100,7 +102,9 @@ validate_schema_data_test(_Config) ->
 validate_json_schema_testsuite(_Config) ->
     exec_json_test("required.json"),
     exec_json_test("type.json"),
-    exec_json_test("enum.json").
+    exec_json_test("enum.json"),
+    exec_json_test("minLength.json"),
+    exec_json_test("maxLength.json").
 
 exec_json_test(FileName) ->
     Path = "./../../test/json-testsuite/",

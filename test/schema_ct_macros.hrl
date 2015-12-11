@@ -297,3 +297,24 @@
         }
     }
 ).
+-define(TESTSCHEMA12,
+    #{
+        <<"title">> => <<"Marketing Budget - Decision">>,
+        <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+        <<"type">> => <<"object">>,
+        <<"properties">> => #{
+            <<"reason">> => #{
+                <<"title">> => <<"Reason">>,
+                <<"description">> => <<"The reason for your decision">>,
+                <<"type">> => <<"string">>,
+                <<"minLength">> => 20
+            },
+            <<"yesno">> => #{
+                <<"title">> => <<"Decide">>,
+                <<"description">> => <<"tick your decision">>,
+                <<"type">> => <<"string">>,
+                <<"enum">> => [<<"no">>, <<"yes">>, <<"maybe">>]
+            }
+        },
+        <<"required">> => [<<"reason">>, <<"yesno">>]
+    }).
