@@ -12,18 +12,46 @@
     case Expression of true -> true;_ -> throw({ThrowReason, ProblemValue}) end).
 
 -define(MUSTBETYPE_TEXT, " must be of type ").
-
 -define(ATLEASTONE_TEXT, " must have at least one element").
 -define(UNIQUE_TEXT, "'s elements must all be unique").
 -define(ALLOFTYPELIST_TEXT, "'s elements must all be of type list").
 
+-define(VALIDATE_FIELD_TYPE_TEXT, "field \"type\" requires the type ").
+-define(VALIDATE_FIELD_REQUIRED_TEXT, "field \"required\" requires certain keys to exist").
+-define(VALIDATE_FIELD_ENUM_TEXT, "field \"enum\" requires certain values").
+
 -define(ATLEASTONE(List, VariableName), ?CT(VariableName ++ ?ATLEASTONE_TEXT, List, erlang:length(List) >= 1)).
 -define(UNIQUE(List, VariableName), ?CT(VariableName ++ ?UNIQUE_TEXT, List, erlang:length(List) == sets:size(sets:from_list(List)))).
--define(ALLOFTYPEBINARY(List, VariableName), ?CT(VariableName ++ ?ALLOFTYPELIST_TEXT, List, lists:all(fun(E) -> is_binary(E) end, List))).
+-define(ALLOFTYPEBINARY(List, VariableName), ?CT(VariableName ++ ?ALLOFTYPELIST_TEXT, List, lists:all(fun(E) ->
+    is_binary(E) end, List))).
 
 -define(MUSTBETYPE(Var, VariableName, TypeName, Expression), ?CT(VariableName ++ ?MUSTBETYPE_TEXT ++ TypeName, Var, Expression)).
 -define(MUSTBELIST(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "list", is_list(Var))).
 -define(MUSTBEBINARY(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "binary", is_binary(Var))).
+-define(MUSTBEPRIMITIVETYPE(Type), ?MUSTBETYPE(Type, "type", "primitive", lists:member(Type, [?OBJECT, ?STRING, ?NUMBER, ?BOOLEAN, ?ARRAY, ?NULL, ?INTEGER]))).
+
+-define(VALIDATE_FIELD_TYPE(Schema, Variable, TypeName, TypeIdentifier), ?CT(?VALIDATE_FIELD_TYPE_TEXT ++ TypeName, {Schema, Variable}, not (maps:is_key(?TYPE, Schema)) orelse lists:member(TypeIdentifier, (case maps:get(?TYPE, Schema) of List when is_list(List) ->
+    List; Else -> [Else] end)))).
+-define(VALIDATE_FIELD_TYPE_OBJECT(Schema, Variable), ?VALIDATE_FIELD_TYPE(Schema, Variable, "object", ?OBJECT)).
+-define(VALIDATE_FIELD_TYPE_NUMBER(Schema, Variable), ?VALIDATE_FIELD_TYPE(Schema, Variable, "number", ?NUMBER)).
+-define(VALIDATE_FIELD_TYPE_BOOLEAN(Schema, Variable), ?VALIDATE_FIELD_TYPE(Schema, Variable, "boolean", ?BOOLEAN)).
+-define(VALIDATE_FIELD_TYPE_BINARY(Schema, Variable), ?VALIDATE_FIELD_TYPE(Schema, Variable, "binary", ?STRING)).
+-define(VALIDATE_FIELD_TYPE_NULL(Schema, Variable), ?VALIDATE_FIELD_TYPE(Schema, Variable, "null", ?NULL)).
+-define(VALIDATE_FIELD_TYPE_LIST(Schema, Variable), ?VALIDATE_FIELD_TYPE(Schema, Variable, "list", ?ARRAY)).
+-define(VALIDATE_FIELD_TYPE_INTEGER_OR_NUMBER(Schema, Variable), ?CT(?VALIDATE_FIELD_TYPE_TEXT ++ "integer or number", {Schema, Variable}, not (maps:is_key(?TYPE, Schema)) orelse
+    lists:any(fun(E) ->
+        lists:member(E, [?INTEGER, ?NUMBER]) end, (case maps:get(?TYPE, Schema) of List when is_list(List) ->
+        List; Else -> [Else] end)
+    ))).
+
+-define(VALIDATE_FIELD_ENUM(Schema, Variable), ?CT(?VALIDATE_FIELD_ENUM_TEXT, {maps:get(?ENUM, Schema), Variable}, not (maps:is_key(?ENUM, Schema)) orelse lists:member(Variable, maps:get(?ENUM, Schema)))).
+
+-define(VALIDATE_FIELD_REQUIRED(Schema, Variable), ?CT(?VALIDATE_FIELD_REQUIRED_TEXT, {maps:get(?REQUIRED, Schema), Variable}, not (maps:is_key(?REQUIRED, Schema)) orelse lists:all(fun(E) ->
+    lists:member(E, maps:keys(Variable)) end, maps:get(?REQUIRED, Schema)))).
+
+-define(VALIDATE_MATCHING_PROPERTIES(Schema, Variable),
+    ?CT("the given value-map contains more properties than defined in the properties-map", {maps:get(?PROPERTIES, Schema), ValuesMap}, not (maps:is_key(?PROPERTIES, Schema)) orelse lists:all(fun(E) ->
+        lists:member(E, maps:keys(maps:get(?PROPERTIES, Schema))) end, maps:keys(ValuesMap)))).
 
 %% http://json-schema.org/latest/json-schema-core.html
 

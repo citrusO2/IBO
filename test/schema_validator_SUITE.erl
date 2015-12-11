@@ -14,9 +14,9 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([validate_schema_test/1, validate_schema_data_test/1]).
+-export([validate_schema_test/1, validate_schema_data_test/1, validate_json_schema_testsuite/1]).
 
-all() -> [validate_schema_test, validate_schema_data_test].
+all() -> [validate_schema_test, validate_schema_data_test, validate_json_schema_testsuite].
 
 init_per_suite(Config) ->
     Config.
@@ -48,9 +48,9 @@ validate_schema_test(_Config) ->
     TS11 = ?TESTSCHEMA11,
 
     {ok, TS1} = schema_validator:validate_schema(TS1),
-    {error, {"description has to be of type binary", 2312}} = schema_validator:validate_schema(TS2),
+    {error, {"description must be of type binary", 2312}} = schema_validator:validate_schema(TS2),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS3}} = schema_validator:validate_schema(TS3),
-    {error, {"title has to be of type binary", true}} = schema_validator:validate_schema(TS4),
+    {error, {"title must be of type binary", true}} = schema_validator:validate_schema(TS4),
     {ok, TS5} = schema_validator:validate_schema(TS5),
     {error, {"required elements must match the keys in properties", [<<"wuhaha">>, <<"yesno">>]}} = schema_validator:validate_schema(TS6),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS7}} = schema_validator:validate_schema(TS7),
@@ -64,38 +64,64 @@ validate_schema_data_test(_Config) ->
     {ok, Data1} = schema_validator:validate_data(?TESTSCHEMA1, Data1),
 
     Data2 = #{<<"reason">> => <<"DecisionReason">>, <<"yesno">> => <<"haha">>},
-    ResSchema2 = #{<<"description">> => <<"tick your decision">>,
-        <<"enum">> => [<<"no">>, <<"yes">>, <<"maybe">>],
-        <<"title">> => <<"Decide">>,
-        <<"type">> => <<"string">>},
-    {error, {"The given value differs from the values in enum", {ResSchema2,
+    ResSchema2 = [<<"no">>,<<"yes">>,<<"maybe">>],
+    {error, {"field \"enum\" requires certain values", {ResSchema2,
         <<"haha">>}}} = schema_validator:validate_data(?TESTSCHEMA1, Data2),
 
     Data3 = #{<<"yesno">> => <<"yes">>},
-    {error, {"the given value-map does not contain all required keys", {[<<"reason">>, <<"yesno">>], Data3}}} = schema_validator:validate_data(?TESTSCHEMA1, Data3),
+    {error, {"field \"required\" requires certain keys to exist", {[<<"reason">>, <<"yesno">>], Data3}}} = schema_validator:validate_data(?TESTSCHEMA1, Data3),
 
     Data4 = #{<<"reason">> => <<"DecisionReason">>},
-    {error, {"the given value-map does not contain all required keys", {[<<"reason">>, <<"yesno">>], Data4}}} = schema_validator:validate_data(?TESTSCHEMA1, Data4),
+    {error, {"field \"required\" requires certain keys to exist", {[<<"reason">>, <<"yesno">>], Data4}}} = schema_validator:validate_data(?TESTSCHEMA1, Data4),
 
     Data5 = #{<<"reason">> => 25, <<"yesno">> => <<"yes">>},
     ResSchema5 = #{<<"description">> => <<"The reason for your decision">>,
         <<"title">> => <<"Reason">>,
         <<"type">> => <<"string">>},
-    {error, {"the given value is of type integer, but the schema is not of type integer or number", {ResSchema5, 25}}} = schema_validator:validate_data(?TESTSCHEMA1, Data5),
+    {error, {"field \"type\" requires the type integer or number", {ResSchema5, 25}}} = schema_validator:validate_data(?TESTSCHEMA1, Data5),
 
     ResSchema6 = ResSchema5,
     Data6 = #{<<"reason">> => true, <<"yesno">> => <<"yes">>},
-    {error, {"the given value is of type boolean, but the schema is not of type boolean", {ResSchema6, true}}} = schema_validator:validate_data(?TESTSCHEMA1, Data6),
+    {error, {"field \"type\" requires the type boolean", {ResSchema6, true}}} = schema_validator:validate_data(?TESTSCHEMA1, Data6),
 
     ResSchema7 = ResSchema5,
     Data7 = #{<<"reason">> => [<<"DecisionReason">>], <<"yesno">> => <<"yes">>},
-    {error, {"the given value is a list, but the schema is not of type array", {ResSchema7, [<<"DecisionReason">>]}}} = schema_validator:validate_data(?TESTSCHEMA1, Data7),
+    {error, {"field \"type\" requires the type list", {ResSchema7, [<<"DecisionReason">>]}}} = schema_validator:validate_data(?TESTSCHEMA1, Data7),
 
     ResSchema8 = ResSchema5,
     Data8 = #{<<"reason">> => null, <<"yesno">> => <<"yes">>},
-    {error, {"the given value is of type null, but the schema is not of type null", {ResSchema8, null}}} = schema_validator:validate_data(?TESTSCHEMA1, Data8),
+    {error, {"field \"type\" requires the type null", {ResSchema8, null}}} = schema_validator:validate_data(?TESTSCHEMA1, Data8),
 
     Data9 = #{<<"reason">> =>#{<<"properties">> => <<"DecisionReason">>}, <<"yesno">> => <<"yes">>},
     Value9 = #{<<"properties">> => <<"DecisionReason">>},
     ResSchema9 = ResSchema5,
-    {error, {"the given value is a map, but the schema is not of type object", {ResSchema9, Value9}}} = schema_validator:validate_data(?TESTSCHEMA1, Data9).
+    {error, {"field \"type\" requires the type object", {ResSchema9, Value9}}} = schema_validator:validate_data(?TESTSCHEMA1, Data9).
+
+validate_json_schema_testsuite(_Config) ->
+    exec_json_test("required.json"),
+    exec_json_test("type.json"),
+    exec_json_test("enum.json").
+
+exec_json_test(FileName) ->
+    Path = "./../../test/json-testsuite/",
+    {ok, JsonData} = file:read_file(Path ++ FileName),
+    Cases = jsx:decode(JsonData, [return_maps]),
+    lists:foreach(fun(E) -> exec_json_case_test(maps:get(<<"schema">>, E), maps:get(<<"tests">>,E)) end, Cases).
+
+%%    lists:foreach(fun(E) ->
+%%        Schema = maps:get(<<"schema">>,E),
+%%        Tests = maps:get(<<"tests">>, E),
+%%        lists:foldl(fun(Test, Acc) -> {ok, _} = schema_validator:validate_data(Schema,maps:get(<<"data">>, Test)) end, {ok, any}, Tests)
+%%        end, CasesArray).
+
+exec_json_case_test(Schema, Tests) when is_list(Tests) ->
+    lists:foreach(fun(E) -> exec_json_case_test(Schema, E) end,Tests);
+exec_json_case_test(Schema, Test) when is_map(Test) ->
+    ct_helper:print_var("Test", Test),
+    case schema_validator:validate_data(Schema, maps:get(<<"data">>, Test)) of
+        {ok, _} ->
+            true = maps:get(<<"valid">>, Test);
+        {error, Error} ->
+            ct_helper:print_var("ValidatorError", Error),
+            false = maps:get(<<"valid">>, Test)
+    end.
