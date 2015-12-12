@@ -121,7 +121,18 @@ check_xbo(XBO, StepNr, State) ->
     XBOid = XBO#ibo_xbo.id,
     throw_if_true(XBOid =:= "", "Id of XBO must not be empty"),
 
-    % TODO check commands as well
+
+    Line = lists:nth(1, Step#ibo_xbostep.commands),
+    throw_if_false((Line#ibo_xboline.library =:= xlib_box andalso Line#ibo_xboline.command =:= webinit), "The first command must be webinit from the xlib_box library!"),
+    case schema_validator:validate_schema(lists:nth(1, Line#ibo_xboline.args)) of
+        {ok, _} ->
+            ok;
+        {error, {ReasonText, _}} ->
+            throw("The first element in args of the first command must be a valid schema: " ++ ReasonText)
+    end,
+
+    % TODO check other commands as well
+
     % check if XBO already exists in database (=duplicate XBO) as last check -> slowest check
     throw_if_true(is_key_in_table(ibo_boxdata,XBOid), "XBO is already in Table"),
     ok.

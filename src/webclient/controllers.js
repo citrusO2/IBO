@@ -106,11 +106,17 @@
 
                     $scope.onSubmit = function(form) {
                         // First we broadcast an event so all fields validate themselves
+                        $scope.error = null;
+                        $scope.success = null;
                         $scope.$broadcast('schemaFormValidate');
 
                         // Then we check if the form is valid
                         if (form.$valid) {
                             console.log($scope.model);
+                            $http.post('/api/box/'+ $scope.xboId, $scope.model, AuthService.currentHeader()).then(
+                                function(res){$scope.success = "Data sent successfully";},
+                                function(res){$scope.error = res.data.error;}
+                            );
                         }
                     }
 

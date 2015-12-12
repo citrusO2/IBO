@@ -22,13 +22,20 @@
 
 %% API ---------------------------------------------------------------
 -export([init/2]).
+-export([allowed_methods/2]).
 -export([content_types_provided/2]).
+-export([content_types_accepted/2]).
 -export([is_authorized/2]).
 -export([forbidden/2]).
--export([to_json/2]).
+-export([json_get/2]).
+-export([json_post/2]).
 
 init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
+
+%% Allowed Methods ---------------------------------------------------
+allowed_methods(Req, State) ->
+    {[<<"GET">>, <<"HEAD">>, <<"OPTIONS">>, <<"POST">>], Req, State}.
 
 %% Authentication ----------------------------------------------------
 is_authorized(Req, State) ->
@@ -56,7 +63,7 @@ forbidden(Req, State) ->
             },
             {false, Req, NewState};
         XboID ->
-            io:format("XboID>>>~p~n", [XboID]),
+%%            io:format("XboID>>>~p~n", [XboID]),
             case box_server:get_webinit(XboID) of
                 {error, not_found} ->
                     {ok, Req2} = cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"id not found\"}">>, Req),
@@ -65,7 +72,7 @@ forbidden(Req, State) ->
                     {ok, Req2} = cowboy_req:reply(500, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"db problem\"}">>, Req),
                     {stop, Req2, State};
                 Data ->
-                    io:format("Data>>>~p~n", [Data]),
+%%                    io:format("Data>>>~p~n", [Data]),
                     {Group, Args} = Data,
                     case lists:member(Group, State#state.ibo_user#ibo_user.groups) of
                         true ->
@@ -80,14 +87,34 @@ forbidden(Req, State) ->
 
 content_types_provided(Req, State) ->
     {[
-        {<<"application/json">>, to_json}
+        {<<"application/json">>, json_get}
     ], Req, State}.
 
-to_json(Req, State) when State#state.type =:= overview ->
+content_types_accepted(Req, State) ->
+    {[
+        {{<<"application">>, <<"json">>, '*'}, json_post}
+    ], Req, State}.
+
+json_get(Req, State) when State#state.type =:= overview ->
     PrepareData = [json_helper:prepare(E) || E <- State#state.ibo_boxindices],
     Body = jsx:encode(PrepareData),
     {Body, Req, State};
-to_json(Req, State) when State#state.type =:= detail ->
+json_get(Req, State) when State#state.type =:= detail ->
     PrepareData = State#state.ibo_boxdetail,
     Body = jsx:encode(PrepareData),
     {Body, Req, State}.
+
+json_post(Req, State) when State#state.type =:= detail ->
+    {ok, Body, Req2} = cowboy_req:body(Req),
+
+    Data = jsx:decode(Body, [return_maps]),
+    Schema = State#state.ibo_boxdetail,
+
+    case schema_validator:validate_data(Schema, Data) of
+        {ok, _Data} ->  % TODO use data here
+            {true, Req2, State};
+        {error, {_Reason, _ProblemValue}} ->
+            % TODO log reason here!
+            cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"serverside validation failed\"}">>, Req),
+            {true, Req2, State}
+    end.

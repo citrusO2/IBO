@@ -9,6 +9,34 @@
 -author("Florian").
 
 -include("../src/box/box_records.hrl").
+-define(XBO_COMMANDS, [
+    #ibo_xboline{
+        library = xlib_box,
+        command = webinit,
+        args = [
+            #{
+                <<"title">> => <<"Marketing Budget - Decision">>,
+                <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+                <<"type">> => <<"object">>,
+                <<"properties">> => #{
+                    <<"reason">> => #{
+                        <<"title">> => <<"Reason">>,
+                        <<"description">> => <<"The reason for your decision">>,
+                        <<"type">> => <<"string">>
+                    },
+                    <<"yesno">> => #{
+                        <<"title">> => <<"Decide">>,
+                        <<"description">> => <<"tick your decision">>,
+                        <<"type">> => <<"string">>,
+                        <<"enum">> => [<<"no">>,<<"yes">>,<<"maybe">>]
+                    }
+                },
+                <<"required">> => [<<"reason">>, <<"yesno">>]
+            }
+        ]
+    }
+]).
+
 -define(XBO, #ibo_xbo{
     id = <<"1-141232">>,
     format_indicator = 1,
@@ -18,13 +46,7 @@
         domain = <<"box_server">>,
         local = <<"marketing">>,    % this XBO Step is meant for the "marketing" group (ibo_group.groupname)
         description = <<"Apply for your holidays">>,
-        commands = [
-            #ibo_xboline{
-                library = test,
-                command = testcommand,
-                args = [miau]
-            }
-        ]
+        commands = ?XBO_COMMANDS
     }]
 }).
 
@@ -37,33 +59,7 @@
         domain = <<"box_server">>,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
-        commands = [
-            #ibo_xboline{
-                library = xlib_box,
-                command = webinit,
-                args = [
-                    #{
-                        <<"title">> => <<"Marketing Budget - Decision">>,
-                        <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
-                        <<"type">> => <<"object">>,
-                        <<"properties">> => #{
-                            <<"reason">> => #{
-                                <<"title">> => <<"Reason">>,
-                                <<"description">> => <<"The reason for your decision">>,
-                                <<"type">> => <<"string">>
-                            },
-                            <<"yesno">> => #{
-                                <<"title">> => <<"Decide">>,
-                                <<"description">> => <<"tick your decision">>,
-                                <<"type">> => <<"string">>,
-                                <<"enum">> => [<<"no">>,<<"yes">>,<<"maybe">>]
-                            }
-                        },
-                        <<"required">> => [<<"reason">>, <<"yesno">>]
-                    }
-                ]
-            }
-        ]
+        commands = ?XBO_COMMANDS
     }]
 }).
 
@@ -76,13 +72,7 @@
         domain = <<"star_destroyer">>,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
-        commands = [
-            #ibo_xboline{
-                library = test,
-                command = testcommand,
-                args = [miau]
-            }
-        ]
+        commands = ?XBO_COMMANDS
     }]
 }).
 
@@ -95,13 +85,7 @@
         domain = <<"box_server">>,
         local = <<"it">>,
         description = <<"Create new VM">>,
-        commands = [
-            #ibo_xboline{
-                library = test,
-                command = testcommand,
-                args = [miau]
-            }
-        ]
+        commands = ?XBO_COMMANDS
     }]
 }).
 
@@ -114,12 +98,6 @@
         domain = <<"box_server">>,
         local = <<"production">>,
         description = <<"Approve or deny the maintenance plan">>,
-        commands = [
-            #ibo_xboline{
-                library = test,
-                command = testcommand,
-                args = [miau]
-            }
-        ]
+        commands = ?XBO_COMMANDS
     }]
 }).
