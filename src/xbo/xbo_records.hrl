@@ -46,7 +46,7 @@
     deadletter :: nonempty_list(nonempty_string()), % list of server in charge of handling a dead letter
     steps :: nonempty_list(#ibo_xbostep{}),
     % signature :: binary(),                        % signing xbo to prevent modification
-    stepdata = [] :: list(#ibo_xbostepdata{})            % contains information provided by each step
+    stepdata = [] :: list(#ibo_xbostepdata{})       % contains information provided by each step
 }).
 
 -record(ibo_xborouter_state, {

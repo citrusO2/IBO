@@ -66,11 +66,11 @@ forbidden(Req, State) ->
 %%            io:format("XboID>>>~p~n", [XboID]),
             case box_server:get_webinit(XboID) of
                 {error, not_found} ->
-                    {ok, Req2} = cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"id not found\"}">>, Req),
-                    {stop, Req2, State};
+                    cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"id not found\"}">>, Req),
+                    {stop, Req, State};
                 {error, _Reason} ->
-                    {ok, Req2} = cowboy_req:reply(500, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"db problem\"}">>, Req),
-                    {stop, Req2, State};
+                    cowboy_req:reply(500, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"db problem\"}">>, Req),
+                    {stop, Req, State};
                 Data ->
 %%                    io:format("Data>>>~p~n", [Data]),
                     {Group, Args} = Data,

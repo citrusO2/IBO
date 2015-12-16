@@ -49,6 +49,7 @@ start_dependencies() ->
     ok = application:start(mnesia).
 
 start_web() ->
+    io:format("cowboy webserver starting~n"),
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
@@ -70,5 +71,6 @@ start(_StartType, _StartArgs) ->
     ibo_sup:start_link().
 
 stop(_State) ->
+    io:format("cowboy webserver stopping~n"),
     cowboy:stop_listener(http),
     ok.
