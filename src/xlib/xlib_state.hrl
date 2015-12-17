@@ -13,5 +13,6 @@
 -record(xlib_state, {
     xbo :: #ibo_xbo{},
     current_linenr :: non_neg_integer(),
-    current_stepdata :: #ibo_xbostepdata{}
+    current_stepdata :: #ibo_xbostepdata{},
+    ttl = 500 :: non_neg_integer()          % maximum possible tail recursive function calls
 }).

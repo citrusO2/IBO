@@ -31,7 +31,7 @@
 -record(ibo_xbostepdata, {
     create_time = os:timestamp() :: timestamp(),
     stepnr :: non_neg_integer(),
-    vars = [] :: list({nonempty_string(), any()})    % variables stored in this step
+    vars = #{} :: #{}                               % variables stored in this step
 }).
 
 -record(ibo_xbo, {

@@ -20,7 +20,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, process_xbo/2, get_boxindices/1, get_webinit/1]).
+-export([start_link/0, stop/0, process_xbo/2, get_boxindices/1, get_webinit/1, execute_xbo/2]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -30,6 +30,9 @@ stop() ->
 
 process_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
     gen_server:call(?MODULE, {process_xbo, XBO, StepNr}).
+
+execute_xbo(XBOid, DataMap) ->
+    gen_server:call(?MODULE, {execute_xbo, XBOid, DataMap}).
 
 get_boxindices(GroupNameList) when is_list(GroupNameList) ->
     gen_server:call(?MODULE, {get_boxindices, GroupNameList});
@@ -66,6 +69,28 @@ handle_call({get_webinit, XBOid}, _From, State) ->
         Boxdata ->
             Config = get_webinit_conf(Boxdata),
             {reply, xlib_box:webinit(Config), State}
+    end;
+handle_call({execute_xbo, XBOid, DataMap}, _From, State) ->
+    case read_transactional(ibo_boxdata, XBOid) of
+        not_found ->
+            {reply, {error,not_found}, State};
+        {error, Reason} ->
+            {reply, {error,Reason}, State};
+        Boxdata ->
+            Config = get_process_conf(Boxdata, DataMap),
+            Router = get_first_router(Boxdata),
+            case xlib:start(Config) of  % TODO: put in an extra process, add error handling
+            % TODO: remove XBO from Box
+                {finish, XlibState} ->
+                    apply(list_to_atom(Router), end_xbo, [XlibState#xlib_state.xbo,XlibState#xlib_state.current_stepdata]),    % TODO: change when there are more than one router
+                    {reply, {ok, xbo_end}, State};
+                {send, XlibState, NewStepNr, NewDestination} ->
+                    apply(list_to_atom(Router), process_xbo, [XlibState#xlib_state.xbo,NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination]),    % TODO: change when there are more than one router
+                    {reply, {ok, xbo_send}, State};
+                {error, XlibState, Reason} ->
+                    apply(list_to_atom(Router), debug_xbo, [XlibState, Reason]), % TODO: change when there are more than one router
+                    {reply, {error, xbo_error}, State}
+            end
     end;
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
@@ -187,3 +212,10 @@ read_transactional(Table, Key) ->
 get_webinit_conf(Boxdata) ->
     Stepdata = #ibo_xbostepdata{stepnr = Boxdata#ibo_boxdata.xbostepnr},
     #xlib_state{current_linenr = 1, xbo = Boxdata#ibo_boxdata.xbodata, current_stepdata = Stepdata}.
+
+get_process_conf(Boxdata, DataMap) ->
+    Stepdata = #ibo_xbostepdata{stepnr = Boxdata#ibo_boxdata.xbostepnr, vars = DataMap},
+    #xlib_state{current_linenr = 2, xbo = Boxdata#ibo_boxdata.xbodata, current_stepdata = Stepdata}.
+
+get_first_router(Boxdata) ->
+    lists:nth(1, Boxdata#ibo_boxdata.xbodata#ibo_xbo.router).

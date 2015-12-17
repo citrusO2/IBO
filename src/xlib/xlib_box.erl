@@ -14,13 +14,12 @@
 %% API
 -export([webinit/1]).
 
--spec webinit(State :: #xlib_state{}) -> {Group :: nonempty_string(), Args :: any()}.
+-spec webinit(State :: #xlib_state{}) -> {Group :: nonempty_string(), Taskdetails :: any()}.
 
 % Step which initializes the web interface for the users
 webinit(State) ->
     1 = State#xlib_state.current_linenr,
-    Step = lists:nth(State#xlib_state.current_stepdata#ibo_xbostepdata.stepnr,
-        State#xlib_state.xbo#ibo_xbo.steps),
+    Step = xlib:get_current_step(State),
     Group = Step#ibo_xbostep.local,
     [Taskdetails|_] = (lists:nth(1, Step#ibo_xbostep.commands))#ibo_xboline.args,
 

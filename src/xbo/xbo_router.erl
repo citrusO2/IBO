@@ -17,7 +17,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/0, process_xbo/4]).
+-export([start_link/1, stop/0, process_xbo/4, end_xbo/2, debug_xbo/2]).
 
 start_link(Args) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
@@ -27,6 +27,12 @@ stop() ->
 
 process_xbo(XBO, NewStepNr, NewStepData, Destination) ->    % main function where IBOs get send to from other servers
     gen_server:call(?MODULE, {process_xbo, XBO, NewStepNr, NewStepData, Destination}).
+
+end_xbo(XBO, NewStepData) ->
+    gen_server:call(?MODULE, {end_xbo, XBO, NewStepData}).
+
+debug_xbo(XlibState,Reason) ->
+    gen_server:call(?MODULE, {debug_xbo, XlibState, Reason}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -47,6 +53,10 @@ handle_call({process_xbo, XBO, NewStepNr, NewStepData, Destination}, _From, Stat
         false ->
             {reply, {error, "Destination is not allowed"}, State}
     end;
+handle_call({end_xbo, _XBO, _NewStepData}, _From, State) ->
+    {reply, ok, State};    % TODO: store information of XBO here and archive it
+handle_call({debug_xbo, _XlibState, _Reason}, _From, State) ->
+    {reply, ok, State};    % TODO: forward it to deadletter/error
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 

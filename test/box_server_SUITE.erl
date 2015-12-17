@@ -17,11 +17,13 @@
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
 -export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1,
     process_xbo_duplication_test/1,process_xbo_check_test/1,
-    get_boxindices_test/1, get_boxindices_user_test/1, get_webinit_test/1]).
+    get_boxindices_test/1, get_boxindices_user_test/1, get_webinit_test/1,
+    execute_xbo_test/1]).
 
 all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test,
     process_xbo_duplication_test, process_xbo_check_test,
-    get_boxindices_test, get_boxindices_user_test, get_webinit_test].
+    get_boxindices_test, get_boxindices_user_test, get_webinit_test,
+    execute_xbo_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -41,10 +43,17 @@ end_per_suite(_Config) ->
     rpc:multicall(Nodes, application, stop, [mnesia]),
     ok = mnesia:delete_schema(Nodes).
 
+init_per_testcase(execute_xbo_test, Config) ->
+    box_server:start_link(),
+    xbo_router:start_link([["box_server","another_server"]]),
+    Config;
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     box_server:start_link(),
     Config.
 
+end_per_testcase(execute_xbo_test, _Config) ->
+    xbo_router:stop(),
+    end_per_testcase(any,_Config);
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_boxdata),
     mnesia:clear_table(ibo_boxindex),
@@ -185,3 +194,11 @@ get_webinit_test(_Config) ->
     Commands = lists:nth(1, Step#ibo_xbostep.commands),
     [Schema|_] = Commands#ibo_xboline.args,
     {Group, Schema} = Response1.
+
+execute_xbo_test(_Config) ->
+    XBOstepnr = 1,
+    XBO = ?NEWXBO,
+    ok = box_server:process_xbo(XBO, XBOstepnr),
+    {ok, xbo_end} = box_server:execute_xbo(XBO#ibo_xbo.id, #{<<"reason">> => <<"There is no alternative">>, <<"yesno">> => <<"yes">>}),
+
+    ok.

@@ -34,7 +34,7 @@
                 <<"required">> => [<<"reason">>, <<"yesno">>]
             }
         ]
-    }
+    },#ibo_xboline{library = xlib, command = finish}
 ]).
 
 -define(XBO, #ibo_xbo{
@@ -55,6 +55,7 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
+    router = ["xbo_router"],
     steps = [#ibo_xbostep{
         domain = <<"box_server">>,
         local = <<"marketing">>,
