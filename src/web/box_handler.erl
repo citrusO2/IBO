@@ -17,7 +17,8 @@
     type :: undefined | overview | detail,
     ibo_user :: #ibo_user{} | undefined,
     ibo_boxdetail :: any() | undefined,
-    ibo_boxindices :: [#ibo_boxindex{}] | undefined
+    ibo_boxindices :: [#ibo_boxindex{}] | undefined,
+    xbo_id :: undefined | nonempty_string()
 }).
 
 %% API ---------------------------------------------------------------
@@ -63,22 +64,23 @@ forbidden(Req, State) ->
             },
             {false, Req, NewState};
         XboID ->
+            NewState = State#state{xbo_id = XboID},
 %%            io:format("XboID>>>~p~n", [XboID]),
             case box_server:get_webinit(XboID) of
                 {error, not_found} ->
                     cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"id not found\"}">>, Req),
-                    {stop, Req, State};
+                    {stop, Req, NewState};
                 {error, _Reason} ->
                     cowboy_req:reply(500, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"db problem\"}">>, Req),
-                    {stop, Req, State};
+                    {stop, Req, NewState};
                 Data ->
 %%                    io:format("Data>>>~p~n", [Data]),
                     {Group, Args} = Data,
-                    case lists:member(Group, State#state.ibo_user#ibo_user.groups) of
+                    case lists:member(Group, NewState#state.ibo_user#ibo_user.groups) of
                         true ->
-                            {false, Req, State#state{type = detail, ibo_boxdetail = Args}};
+                            {false, Req, NewState#state{type = detail, ibo_boxdetail = Args}};
                         false ->
-                            {true, Req, State#state{type = detail, ibo_boxdetail = Args}}
+                            {true, Req, NewState#state{type = detail, ibo_boxdetail = Args}}
                     end
             end
     end.
@@ -112,6 +114,15 @@ json_post(Req, State) when State#state.type =:= detail ->
 
     case schema_validator:validate_data(Schema, Data) of
         {ok, _Data} ->  % TODO use data here
+            case box_server:execute_xbo(State#state.xbo_id, Data) of
+                {ok, xbo_send} ->
+                    cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"xbo send\"}">>, Req);
+                {ok, xbo_end} ->
+                    cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"xbo finished\"}">>, Req);
+                {error, _Reason} ->
+                    io:format(">>>Error executing xbo, reason: ~p~n", [_Reason]),
+                    cowboy_req:reply(500, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"error executing xbo\"}">>, Req)
+            end,
             {true, Req2, State};
         {error, {_Reason, _ProblemValue}} ->
             % TODO log reason here!

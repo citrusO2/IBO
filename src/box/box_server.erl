@@ -63,6 +63,7 @@ handle_call({process_xbo, XBO, StepNr}, _From, State) ->
             {reply, store_xbo(XBO, StepNr), State}
     catch
         _:Error ->
+            io:format("error processing xbo, check_xbo failed: ~p~n", [Error]),
             {reply, {error,{check_xbo,Error}}, State}
     end;
 handle_call({get_boxindices, GroupNameList}, _From, State) ->
@@ -102,18 +103,14 @@ handle_call(stop, _From, State) ->
 handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info({'EXIT', Pid, normal}, State) ->
-    io:format("Trapped EXIT signal normal~n"),
+    %io:format("Trapped EXIT signal normal~n"),
     NewState = remove_worker(Pid, State),
     {noreply, NewState};
-handle_info({'EXIT', Pid, Reason}, State) ->
-    %TODO: sub-process died, error handling here, update worker list
-    io:format("Trapped EXIT signal with reason: ~p~n", [Reason]),
+handle_info({'EXIT', Pid, _Reason}, State) ->
+    %TODO: sub-process died and basic error handling did not work, so log error locally and remove xbo
+    %io:format("Trapped EXIT signal with reason: ~p~n", [Reason]),
     NewState = remove_worker(Pid, State),
     {noreply, NewState};
-handle_info({finished, _TaskResult}, State) ->
-    %TODO: sub-process ended,update worker list
-    io:format("handle_info finished reached for some reason~n"),
-    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 terminate(_Reason, _State) ->
@@ -126,20 +123,23 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%%===================================================================
 xbo_childprocess(Config, Router, From) ->
     io:format("xbo_childprocess started"),
-    case xlib:start(Config) of  % TODO: add error handling or handle error in exit-signal
+
+    Result = try xlib:start(Config) of
         {finish, XlibState} ->
-            io:format("xbo_childprocess finishing"),
-            xbo_childprocess_finish(Router, From, XlibState);
+            xbo_childprocess_finish(Router, XlibState);
         {send, XlibState, NewStepNr, NewDestination} ->
-            io:format("xbo_childprocess sending"),
-            xbo_childprocess_send(Router, From, XlibState, NewStepNr, NewDestination);
-        {error, XlibState, Reason} ->
-            io:format("xbo_childprocess error"),
-            xbo_childprocess_error(Router, From, XlibState, Reason)
-    end.
+            xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination);
+        {error, XlibState, Reason} ->   % error detected by xlib, which returned error
+            xbo_childprocess_error(Router, XlibState, Reason)
+    catch
+        _:Error ->
+            xbo_childprocess_error(Router, Config, Error)
+    end,
+    gen_server:reply(From, Result),
+    Result.
 
 %removes the necessary data from the database, sends the xbo to the router and replies to the process which started the xbo execution
-xbo_childprocess_finish(Router, From, XlibState) ->
+xbo_childprocess_finish(Router, XlibState) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
@@ -147,32 +147,23 @@ xbo_childprocess_finish(Router, From, XlibState) ->
         end
     ),
     case Res of
-        {atomic, ok} ->
-            gen_server:reply(From, {ok, xbo_end}),
-            ok;
-        _ -> {error, "Write failure"}
+        {atomic, ok} -> {ok, xbo_end};
+        {aborted, Reason} -> {error, Reason}
     end.
 
-xbo_childprocess_send(Router, From, XlibState, NewStepNr, NewDestination) ->
+xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            io:format("xbo_childprocess sending, mnesia just removed, still in transaction"),
-            ok = erlang:apply(list_to_atom(Router), process_xbo, [XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination]),    % TODO: change when there are more than one router
-            io:format("xbo_childprocess sending, send packet to Router, still in transaction")
+            ok = erlang:apply(list_to_atom(Router), process_xbo, [XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination])    % TODO: change when there are more than one router
         end
     ),
     case Res of
-        {atomic, ok} ->
-            io:format("xbo_childprocess sending, just removed data from db"),
-            gen_server:reply(From, {ok, xbo_send}),
-            ok;
-        {aborted, Reason} ->
-            io:format("xbo_childprocess sending, mnesia write failure: ~p~n", [Reason]),
-            {error, "Write failure"}
+        {atomic, ok} -> {ok, xbo_send};
+        {aborted, Reason} -> {error, Reason}
     end.
 
-xbo_childprocess_error(Router, From, XlibState, Reason) ->
+xbo_childprocess_error(Router, XlibState, Reason) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
@@ -180,10 +171,8 @@ xbo_childprocess_error(Router, From, XlibState, Reason) ->
         end
     ),
     case Res of
-        {atomic, ok} ->
-            gen_server:reply(From, {error, xbo_error}),
-            ok;
-        _ -> {error, "Write failure"}
+        {atomic, ok} -> {error, xbo_error};
+        {aborted, Reason} -> {error, Reason}
     end.
 
 %%%===================================================================

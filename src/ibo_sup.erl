@@ -21,6 +21,7 @@ start_link() ->
 
 %% Helper macro for declaring children of supervisor -----------------
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -28,7 +29,8 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
         ?CHILD(directory_server, worker),
-        ?CHILD(box_server, worker)
+        ?CHILD(box_server, worker),
+        ?CHILD(xbo_router, worker, [[["box_server","blub_server","another_server"]]]) % Args = Allowed Services
     ]} }.
 
 %%%===================================================================

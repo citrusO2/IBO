@@ -8,8 +8,12 @@
 
 <div data-ng-repeat="index in indices">
     <h2 class="sub-header">{{index.groupname}}</h2>
+    <p data-ng-hide="index.xbolist.length">
+        No tasks available for this group
+    </p>
 
-    <div class="table-responsive">
+
+    <div class="table-responsive" data-ng-show="index.xbolist.length">
         <table class="table table-striped">
             <thead>
             <tr>

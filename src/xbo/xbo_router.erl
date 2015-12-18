@@ -75,7 +75,7 @@ handle_info({'EXIT', Pid, normal}, State) ->
     {noreply, NewState};
 handle_info({'EXIT', Pid, _Reason}, State) ->
     io:format("xbo_router trapped problematic EXIT signal -> TODO: handle the signal~n"),
-    %TODO: error handling here -> deadletter
+    %TODO: error handling here, log locally because the childprocess should already send problematic ones to deadletter
     NewState = remove_pid(Pid, State),
     {noreply, NewState}.
 terminate(_Reason, _State) ->
@@ -87,6 +87,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%% Executing XBO Childprocess
 %%%===================================================================
 xbo_childprocess(Destination, NewXBO, NewStepNr) ->
+    %TODO: error handling here -> send to deadletter
     ok = apply(list_to_atom(Destination), process_xbo, [NewXBO, NewStepNr]).
 
 %%%===================================================================
