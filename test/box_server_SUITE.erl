@@ -77,7 +77,7 @@ process_xbo_emptybox_test(_Config) ->
     Record1 = ct_helper:read_transactional(ibo_boxdata, XBOid),
     Record2 = ct_helper:read_transactional(ibo_boxindex, BoxGroup),
 
-    {ibo_boxdata, XBOid, XBOstepnr, XBO} = Record1,
+    {ibo_boxdata, XBOid, XBOstepnr, XBO, BoxGroup} = Record1,
     {ibo_boxindex, BoxGroup, [
         {ibo_boxindex_elementpreview, XBOid, XBOtemplate, StepDescription, _}
     ]} = Record2,
@@ -100,7 +100,7 @@ process_xbo_nonemptybox_test(_Config) ->
 
     ct_helper:print_var("Record2", Record2),
 
-    {ibo_boxdata, XBOid, XBOstepnr, XBO} = Record1,
+    {ibo_boxdata, XBOid, XBOstepnr, XBO, BoxGroup} = Record1,
     {ibo_boxindex, BoxGroup, [
         {ibo_boxindex_elementpreview, XBOid, XBOtemplate, StepDescription, _},
         {_, _, _, _, _}

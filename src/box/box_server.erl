@@ -14,13 +14,20 @@
 -include_lib("stdlib/include/qlc.hrl").
 -behaviour(xbo_endpoint_behaviour).
 
+%% box_server internal state ------------------------------------------
+-record(state, {
+    domain :: nonempty_string(),
+    workers = [] :: list({pid(), #xlib_state{}})
+}).
+
+
 %% gen_server --------------------------------------------------------
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, process_xbo/2, get_boxindices/1, get_webinit/1, execute_xbo/2]).
+-export([start_link/0, stop/0, process_xbo/2, get_boxindices/1, get_webinit/1, execute_xbo/2, xbo_childprocess/3]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -48,7 +55,7 @@ get_webinit(XBOid) ->   % first ibo_xboline in ibo_xbostep to initialize the ste
 init([]) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     io:format("~p starting~n", [?MODULE]),
-    {ok, #ibo_boxserver_state{domain = list_to_binary(atom_to_list(?MODULE))}}. % initial state
+    {ok, #state{domain = list_to_binary(atom_to_list(?MODULE))}}. % initial state
 
 handle_call({process_xbo, XBO, StepNr}, _From, State) ->
     try check_xbo(XBO, StepNr, State) of
@@ -70,41 +77,134 @@ handle_call({get_webinit, XBOid}, _From, State) ->
             Config = get_webinit_conf(Boxdata),
             {reply, xlib_box:webinit(Config), State}
     end;
-handle_call({execute_xbo, XBOid, DataMap}, _From, State) ->
-    case read_transactional(ibo_boxdata, XBOid) of
-        not_found ->
-            {reply, {error,not_found}, State};
-        {error, Reason} ->
-            {reply, {error,Reason}, State};
-        Boxdata ->
-            Config = get_process_conf(Boxdata, DataMap),
-            Router = get_first_router(Boxdata),
-            case xlib:start(Config) of  % TODO: put in an extra process, add error handling
-            % TODO: remove XBO from Box
-                {finish, XlibState} ->
-                    apply(list_to_atom(Router), end_xbo, [XlibState#xlib_state.xbo,XlibState#xlib_state.current_stepdata]),    % TODO: change when there are more than one router
-                    {reply, {ok, xbo_end}, State};
-                {send, XlibState, NewStepNr, NewDestination} ->
-                    apply(list_to_atom(Router), process_xbo, [XlibState#xlib_state.xbo,NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination]),    % TODO: change when there are more than one router
-                    {reply, {ok, xbo_send}, State};
-                {error, XlibState, Reason} ->
-                    apply(list_to_atom(Router), debug_xbo, [XlibState, Reason]), % TODO: change when there are more than one router
-                    {reply, {error, xbo_error}, State}
+handle_call({execute_xbo, XBOid, DataMap}, From, State) ->
+    case is_xbo_executing(XBOid, State) of
+        true ->
+            {reply, {error, already_started}};
+        _Else ->
+            case read_transactional(ibo_boxdata, XBOid) of
+                not_found ->
+                    {reply, {error,not_found}, State};
+                {error, Reason} ->
+                    {reply, {error,Reason}, State};
+                Boxdata ->
+                    %start subprocess that does the actual execution and the reply as well
+                    Config = get_process_conf(Boxdata, DataMap),
+                    Router = get_first_router(Boxdata),
+                    Pid = spawn_link(?MODULE, xbo_childprocess, [Config, Router, From]),
+                    NewState = save_worker(Pid, Config, State),
+                    {noreply, NewState}
             end
     end;
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
 handle_cast(_Msg, State) -> {noreply, State}.
-handle_info(_Info, State) -> {noreply, State}.
+
+handle_info({'EXIT', Pid, normal}, State) ->
+    io:format("Trapped EXIT signal normal~n"),
+    NewState = remove_worker(Pid, State),
+    {noreply, NewState};
+handle_info({'EXIT', Pid, Reason}, State) ->
+    %TODO: sub-process died, error handling here, update worker list
+    io:format("Trapped EXIT signal with reason: ~p~n", [Reason]),
+    NewState = remove_worker(Pid, State),
+    {noreply, NewState};
+handle_info({finished, _TaskResult}, State) ->
+    %TODO: sub-process ended,update worker list
+    io:format("handle_info finished reached for some reason~n"),
+    {noreply, State};
+handle_info(_Info, State) ->
+    {noreply, State}.
 terminate(_Reason, _State) ->
     io:format("~p stopping~n", [?MODULE]),
     ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%%===================================================================
+%%% Executing XBO Childprocess
+%%%===================================================================
+xbo_childprocess(Config, Router, From) ->
+    io:format("xbo_childprocess started"),
+    case xlib:start(Config) of  % TODO: add error handling or handle error in exit-signal
+        {finish, XlibState} ->
+            io:format("xbo_childprocess finishing"),
+            xbo_childprocess_finish(Router, From, XlibState);
+        {send, XlibState, NewStepNr, NewDestination} ->
+            io:format("xbo_childprocess sending"),
+            xbo_childprocess_send(Router, From, XlibState, NewStepNr, NewDestination);
+        {error, XlibState, Reason} ->
+            io:format("xbo_childprocess error"),
+            xbo_childprocess_error(Router, From, XlibState, Reason)
+    end.
+
+%removes the necessary data from the database, sends the xbo to the router and replies to the process which started the xbo execution
+xbo_childprocess_finish(Router, From, XlibState) ->
+    Res = mnesia:transaction(
+        fun() ->
+            remove_xbo_transactionless(XlibState),
+            ok = erlang:apply(list_to_atom(Router), end_xbo, [XlibState#xlib_state.xbo, XlibState#xlib_state.current_stepdata])    % TODO: change when there are more than one router
+        end
+    ),
+    case Res of
+        {atomic, ok} ->
+            gen_server:reply(From, {ok, xbo_end}),
+            ok;
+        _ -> {error, "Write failure"}
+    end.
+
+xbo_childprocess_send(Router, From, XlibState, NewStepNr, NewDestination) ->
+    Res = mnesia:transaction(
+        fun() ->
+            remove_xbo_transactionless(XlibState),
+            io:format("xbo_childprocess sending, mnesia just removed, still in transaction"),
+            ok = erlang:apply(list_to_atom(Router), process_xbo, [XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination]),    % TODO: change when there are more than one router
+            io:format("xbo_childprocess sending, send packet to Router, still in transaction")
+        end
+    ),
+    case Res of
+        {atomic, ok} ->
+            io:format("xbo_childprocess sending, just removed data from db"),
+            gen_server:reply(From, {ok, xbo_send}),
+            ok;
+        {aborted, Reason} ->
+            io:format("xbo_childprocess sending, mnesia write failure: ~p~n", [Reason]),
+            {error, "Write failure"}
+    end.
+
+xbo_childprocess_error(Router, From, XlibState, Reason) ->
+    Res = mnesia:transaction(
+        fun() ->
+            remove_xbo_transactionless(XlibState),
+            ok = erlang:apply(list_to_atom(Router), debug_xbo, [XlibState, Reason])    % TODO: change when there are more than one router
+        end
+    ),
+    case Res of
+        {atomic, ok} ->
+            gen_server:reply(From, {error, xbo_error}),
+            ok;
+        _ -> {error, "Write failure"}
+    end.
+
+%%%===================================================================
 %%% Internal functions
 %%%===================================================================
+remove_xbo_transactionless(XlibState) ->
+    case mnesia:wread({ibo_boxdata, XlibState#xlib_state.xbo#ibo_xbo.id}) of
+        [BoxData] ->
+            mnesia:delete_object(BoxData),
+            case mnesia:wread({ibo_boxindex, BoxData#ibo_boxdata.groupname}) of
+                [R] ->
+                    mnesia:write(R#ibo_boxindex{
+                        xbolist = lists:dropwhile(fun(Element) -> Element#ibo_boxindex_elementpreview.xboid =:= BoxData#ibo_boxdata.xboid end, R#ibo_boxindex.xbolist)
+                    });
+                [] ->
+                    mnesia:abort("particular mnesia boxindex has to exist but doesn't")
+            end;
+        [] ->
+            mnesia:abort("particular mnesia boxdata has to exist but doesn't")
+    end.
+
 store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several IDs (correlation ID should be saved in step) -> correlation ID has to be set when creating XBO
     Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
     GroupName = Step#ibo_xbostep.local,
@@ -113,7 +213,7 @@ store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several ID
     XBOtemplate = XBO#ibo_xbo.template,
 
     % create new elements for the box and save them
-    NewBoxRec = #ibo_boxdata{xboid = XBOid, xbodata = XBO, xbostepnr = StepNr},
+    NewBoxRec = #ibo_boxdata{xboid = XBOid, xbodata = XBO, xbostepnr = StepNr, groupname = GroupName},
     NewBoxIndElemPrev = #ibo_boxindex_elementpreview{
         xboid = XBOid,
         xbostepdescription = StepDescription,
@@ -141,7 +241,7 @@ check_xbo(XBO, StepNr, State) ->
     throw_if_true(StepNr > StepCount, "StepNr outside StepRange"),
 
     Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
-    throw_if_false(Step#ibo_xbostep.domain =:= State#ibo_boxserver_state.domain, "Step is for a different domain"),
+    throw_if_false(Step#ibo_xbostep.domain =:= State#state.domain, "Step is for a different domain"),
 
     XBOid = XBO#ibo_xbo.id,
     throw_if_true(XBOid =:= "", "Id of XBO must not be empty"),
@@ -219,3 +319,12 @@ get_process_conf(Boxdata, DataMap) ->
 
 get_first_router(Boxdata) ->
     lists:nth(1, Boxdata#ibo_boxdata.xbodata#ibo_xbo.router).
+
+save_worker(Pid, Config, State) ->
+    State#state{workers = [{Pid, Config} |State#state.workers]}.
+
+remove_worker(Pid, State) ->
+    State#state{workers = lists:dropwhile(fun(Element) -> element(1, Element) =:= Pid end,State#state.workers)}.
+
+is_xbo_executing(XBOid, State) ->
+    lists:any(fun(Element) -> (element(2, Element))#xlib_state.xbo#ibo_xbo.id =:= XBOid end, State#state.workers).

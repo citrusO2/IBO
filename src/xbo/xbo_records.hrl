@@ -48,7 +48,3 @@
     % signature :: binary(),                        % signing xbo to prevent modification
     stepdata = [] :: list(#ibo_xbostepdata{})       % contains information provided by each step
 }).
-
--record(ibo_xborouter_state, {
-    allowed_services :: nonempty_list(nonempty_string())    % only services in the list are allowed to be used
-}).

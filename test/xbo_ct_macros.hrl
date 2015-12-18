@@ -37,6 +37,36 @@
     },#ibo_xboline{library = xlib, command = finish}
 ]).
 
+-define(XBO_COMMANDS2, [
+    #ibo_xboline{
+        library = xlib_box,
+        command = webinit,
+        args = [
+            #{
+                <<"title">> => <<"Marketing Budget - Decision2">>,
+                <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+                <<"type">> => <<"object">>,
+                <<"properties">> => #{
+                    <<"reason">> => #{
+                        <<"title">> => <<"Reason">>,
+                        <<"description">> => <<"The reason for your decision">>,
+                        <<"type">> => <<"string">>
+                    },
+                    <<"yesno">> => #{
+                        <<"title">> => <<"Decide">>,
+                        <<"description">> => <<"tick your decision">>,
+                        <<"type">> => <<"string">>,
+                        <<"enum">> => [<<"no">>,<<"yes">>,<<"maybe">>]
+                    }
+                },
+                <<"required">> => [<<"reason">>, <<"yesno">>]
+            }
+        ]
+    },#ibo_xboline{library = xlib, command = cjump, args = [4, fun(StepData, OtherStepData) -> case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else -> false end end]},
+    #ibo_xboline{library = xlib, command = send, args = [1, "box_server"]},
+    #ibo_xboline{library = xlib, command = finish}
+]).
+
 -define(XBO, #ibo_xbo{
     id = <<"1-141232">>,
     format_indicator = 1,
@@ -61,6 +91,20 @@
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = ?XBO_COMMANDS
+    }]
+}).
+
+-define(LIBTEST1XBO, #ibo_xbo{
+    id = <<"1-141233">>,
+    format_indicator = 1,
+    created_by = <<"hanswurst">>,
+    template = <<"marketingbudgetdecision">>,
+    router = ["xbo_router"],
+    steps = [#ibo_xbostep{
+        domain = <<"box_server">>,
+        local = <<"marketing">>,
+        description = <<"Accept or deny the marketing budget">>,
+        commands = ?XBO_COMMANDS2
     }]
 }).
 

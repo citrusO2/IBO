@@ -15,7 +15,8 @@
     print_var/2,
     create_table_for_record/3,
     read_transactional/2,
-    get_recordcount_in_table/1]).
+    get_recordcount_in_table/1,
+    wait/1]).
 
 add_record_to_mnesia(Record) ->
     F = fun() ->
@@ -60,4 +61,9 @@ get_recordcount_in_table(Table) ->
     case Res of
         {atomic, Record} -> length(Record);
         _ -> {error, "Read failure"}
+    end.
+
+wait(Sec) ->
+    receive
+    after (1000 * Sec) -> ok
     end.

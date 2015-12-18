@@ -16,7 +16,8 @@
 -record(ibo_boxdata, {
     xboid :: nonempty_string(),
     xbostepnr :: non_neg_integer(),
-    xbodata :: #ibo_xbo{}
+    xbodata :: #ibo_xbo{},
+    groupname :: nonempty_string()
 }).
 
 %% preview of the XBO which get shown to the user (so that not all XBOs have to retrieved all the time when accessing the box for a group)
@@ -31,9 +32,4 @@
 -record(ibo_boxindex, {
     groupname :: nonempty_string(),
     xbolist = [] :: list(#ibo_boxindex_elementpreview{})
-}).
-
-%% state of the boxserver
--record(ibo_boxserver_state, {  % TODO put inside the server instead
-   domain :: nonempty_string()
 }).

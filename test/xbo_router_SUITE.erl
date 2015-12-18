@@ -66,6 +66,7 @@ sent_to_test(_Config) ->
 
     % sent to box_server via router
     ok = xbo_router:process_xbo(XBO, 1, #ibo_xbostepdata{stepnr = 1}, "box_server"),
+    ct_helper:wait(1), % in order to wait for the xbo to get processed by the box_server
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
@@ -74,7 +75,7 @@ sent_to_test(_Config) ->
     ct_helper:print_var("Record1", Record1),
     ct_helper:print_var("Record2", Record2),
 
-    {ibo_boxdata, XBOid, XBOstepnr, _ } = Record1,
+    {ibo_boxdata, XBOid, XBOstepnr, _, _ } = Record1,
     {ibo_boxindex, BoxGroup, [
         {ibo_boxindex_elementpreview, XBOid, XBOtemplate, StepDescription, _}
     ]} = Record2,
@@ -84,6 +85,8 @@ sent_to_baddestination_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     {error, "Destination is not allowed"} = xbo_router:process_xbo(?XBO, 1, #ibo_xbostepdata{stepnr = 1}, "black_hole"),
+    ct_helper:wait(1),
+
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ok.
@@ -91,7 +94,9 @@ sent_to_baddestination_test(_Config) ->
 sent_to_wrongdomain_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    {error,{check_xbo,"Step is for a different domain"}} = xbo_router:process_xbo(?FAILXBO_WRONGDOMAIN, 1, #ibo_xbostepdata{stepnr = 1}, "box_server"),
+    ok = xbo_router:process_xbo(?FAILXBO_WRONGDOMAIN, 1, #ibo_xbostepdata{stepnr = 1}, "box_server"),   % router does not wait anymore for a reply from the destination server, but sends an ok when the packet is received
+    % TODO: create deadletter and check if it is send to there
+    ct_helper:wait(1),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ok.
