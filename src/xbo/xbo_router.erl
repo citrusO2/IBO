@@ -23,7 +23,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/0, process_xbo/4, end_xbo/2, debug_xbo/2, xbo_childprocess/3]).
+-export([start_link/1, stop/0, process_xbo/3, process_xbo/4, end_xbo/2, debug_xbo/2, xbo_childprocess/3]).
 
 start_link(Args) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
@@ -31,13 +31,16 @@ start_link(Args) ->
 stop() ->
     gen_server:call(?MODULE, stop).
 
+process_xbo(XBO, NewStepNr, Destination) ->
+    process_xbo(XBO, NewStepNr, [], Destination).
+
 process_xbo(XBO, NewStepNr, NewStepData, Destination) ->    % main function where IBOs get send to from other servers
     gen_server:call(?MODULE, {process_xbo, XBO, NewStepNr, NewStepData, Destination}).
 
 end_xbo(XBO, NewStepData) ->
     gen_server:call(?MODULE, {end_xbo, XBO, NewStepData}).
 
-debug_xbo(XlibState,Reason) ->
+debug_xbo(XlibState, Reason) ->
     gen_server:call(?MODULE, {debug_xbo, XlibState, Reason}).
 
 %%%===================================================================
@@ -51,9 +54,13 @@ init([AllowedServices]) ->
 handle_call({process_xbo, XBO, NewStepNr, NewStepData, Destination}, _From, State) ->
     % TODO: store the XBO, StepNr and maybe Time here (time is also stored in the stepdata), also maybe check XBO itself here
     % TODO: wrap in a try catch, add retry and send to deadletter instead
-    case lists:any(fun(Elem) -> Elem =:= Destination end,State#state.allowed_services) of
+    case lists:any(fun(Elem) -> Elem =:= Destination end, State#state.allowed_services) of
         true ->
-            NewXBO = XBO#ibo_xbo{stepdata = [NewStepData|XBO#ibo_xbo.stepdata]},
+            NewXBO =
+                if
+                    NewStepData =:= [] -> XBO;
+                    true -> XBO#ibo_xbo{stepdata = [NewStepData | XBO#ibo_xbo.stepdata]}
+                end,
             Pid = spawn_link(?MODULE, xbo_childprocess, [Destination, NewXBO, NewStepNr]),
             NewState = save_pid(Pid, State),
             {reply, ok, NewState};  % received packet, but not yet forwarded
