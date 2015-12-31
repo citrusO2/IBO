@@ -71,15 +71,15 @@ init([]) ->
     {ok, 0}. % 0 = initial state
 
 handle_call({get_user, Username}, _From, N) ->
-    {reply, read_transactional(ibo_user, Username), N + 1};
+    {reply, db:read_transactional(ibo_user, Username), N + 1};
 handle_call({write_user, User}, _From, N) ->
-    {reply, write_transactional(User), N + 1};
+    {reply, db:write_transactional(User), N + 1};
 handle_call({search_user, SearchString}, _From, N) ->
     {reply, search_transactional(SearchString, ibo_user, 4), N + 1}; % 4 = lastname
 handle_call({get_group, Groupname}, _From, N) ->
-    {reply, read_transactional(ibo_group, Groupname), N + 1};
+    {reply, db:read_transactional(ibo_group, Groupname), N + 1};
 handle_call({write_group, Group}, _From, N) ->
-    {reply, write_transactional(Group), N + 1};
+    {reply, db:write_transactional(Group), N + 1};
 handle_call({search_group, SearchString}, _From, N) ->
     {reply, search_transactional(SearchString, ibo_group, 2), N + 1}; % 2 = groupname
 handle_call({create_user, User, Password}, _From, N) ->
@@ -100,27 +100,6 @@ code_change(_OldVsn, N, _Extra) -> {ok, N}.
 %%% Internal functions
 %%%===================================================================
 %%do(qlc:q([X || X <- mnesia:table(ibo_directory), X#user.username =:= Username])).
-
-read_transactional(Table, Key) ->
-    Res = mnesia:transaction(
-        fun() ->
-            mnesia:read(Table, Key)
-        end),
-    case Res of
-        {atomic, [Record]} -> Record;
-        {atomic, []} -> not_found;
-        _ -> {error, "Read failure"}
-    end.
-
-write_transactional(Record) ->
-    Res = mnesia:transaction(
-        fun() ->
-            mnesia:write(Record)
-        end),
-    case Res of
-        {atomic, ok} -> ok;
-        _ -> {error, "Write failure"}
-    end.
 
 search_transactional(SearchString, Table, _ElementPosition) when SearchString =:= "" orelse SearchString =:= <<"">> ->
     Res = mnesia:transaction(

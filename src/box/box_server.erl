@@ -69,7 +69,7 @@ handle_call({process_xbo, XBO, StepNr}, _From, State) ->
 handle_call({get_boxindices, GroupNameList}, _From, State) ->
     {reply, read_boxindices(GroupNameList), State};
 handle_call({get_webinit, XBOid}, _From, State) ->
-    case read_transactional(ibo_boxdata, XBOid) of
+    case db:read_transactional(ibo_boxdata, XBOid) of
         not_found ->
             {reply, {error,not_found}, State};
         {error, Reason} ->
@@ -83,7 +83,7 @@ handle_call({execute_xbo, XBOid, DataMap}, From, State) ->
         true ->
             {reply, {error, already_started}};
         _Else ->
-            case read_transactional(ibo_boxdata, XBOid) of
+            case db:read_transactional(ibo_boxdata, XBOid) of
                 not_found ->
                     {reply, {error,not_found}, State};
                 {error, Reason} ->
@@ -248,7 +248,7 @@ check_xbo(XBO, StepNr, State) ->
     % TODO check other commands as well
 
     % check if XBO already exists in database (=duplicate XBO) as last check -> slowest check
-    throw_if_true(is_key_in_table(ibo_boxdata,XBOid), "XBO is already in Table"),
+    throw_if_true(db:is_key_in_table(ibo_boxdata,XBOid), "XBO is already in Table"),
     ok.
 
 read_boxindices(GroupNameList) when is_list(GroupNameList) ->
@@ -275,28 +275,6 @@ throw_if_false(Expression,ThrowReason) ->
     end.
 throw_if_true(Expression,ThrowReason)->
     throw_if_false(not Expression,ThrowReason).
-
-is_key_in_table(Table, Key) ->
-    Res = mnesia:transaction(
-        fun() ->
-            mnesia:read(Table, Key)
-        end),
-    case Res of
-        {atomic, [_]} -> true;
-        {atomic, []} -> false;
-        _ -> throw("Cannot check if Key is in Table")
-    end.
-
-read_transactional(Table, Key) ->
-    Res = mnesia:transaction(
-        fun() ->
-            mnesia:read(Table, Key)
-        end),
-    case Res of
-        {atomic, [Record]} -> Record;
-        {atomic, []} -> not_found;
-        _ -> {error, "Read failure"}
-    end.
 
 get_webinit_conf(Boxdata) ->
     Stepdata = #ibo_xbostepdata{stepnr = Boxdata#ibo_boxdata.xbostepnr},
