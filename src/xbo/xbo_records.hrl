@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
-%%-define(xbo_records_include, true).
-
+-ifndef(XBO_RECORDS_HRL).
+-define(XBO_RECORDS_HRL, 1).
 
 -type timestamp() :: {non_neg_integer(),non_neg_integer(), non_neg_integer() }.
 
@@ -37,7 +37,7 @@
 -record(ibo_xbo, {
     id :: nonempty_string(),                        % unique ID (every xbo-"starter" has it's own running ID, so that the IDs cannot collide)
     format_indicator = 1 :: non_neg_integer(),      % Version of the xbo/xbostep itself
-    ttl :: timestamp(),                             % Maximum possible time in the system
+    ttl :: timestamp(),                             % Maximum possible time in the system TODO: implement TTL
     create_time = os:timestamp() :: timestamp(),
     created_by :: nonempty_string(),                % username
     template :: nonempty_string(),                  % unique xbo template name
@@ -45,6 +45,9 @@
     router :: nonempty_list(nonempty_string()),     % list of router to use, first in list = mainrouter for the package
     deadletter :: nonempty_list(nonempty_string()), % list of server in charge of handling a dead letter
     steps :: nonempty_list(#ibo_xbostep{}),
+    % correlations :: list({non_neg_integer(), nonempty_string()}),  % a list with stepnr and correlation ids to merge xbos
     % signature :: binary(),                        % signing xbo to prevent modification
     stepdata = [] :: list(#ibo_xbostepdata{})       % contains information provided by each step
 }).
+
+-endif. % XBO_RECORDS_HRL defined

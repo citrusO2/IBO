@@ -8,6 +8,9 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
+-ifndef(DIRECTORY_RECORDS_HRL).
+-define(DIRECTORY_RECORDS_HRL, 1).
+
 %% records -----------------------------------------------------------
 %% field 1 = table name, field 2 = key, field 3 = field 1
 -record(ibo_user, {
@@ -23,3 +26,5 @@
     groupdescription :: nonempty_string(),
     parent :: string()
 }).
+
+-endif. % DIRECTORY_RECORDS_HRL defined

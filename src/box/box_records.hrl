@@ -10,6 +10,9 @@
 
 -include("../xbo/xbo_records.hrl").
 
+-ifndef(BOX_RECORDS_HRL).
+-define(BOX_RECORDS_HRL, 1).
+
 %% records -----------------------------------------------------------
 %% field 1 = table name, field 2 = key, field 3 = field 1
 %% saves the current XBO to retrieve it for later usage (so that user can access them)
@@ -33,3 +36,5 @@
     groupname :: nonempty_string(),
     xbolist = [] :: list(#ibo_boxindex_elementpreview{})
 }).
+
+-endif. % BOX_RECORDS_HRL defined
