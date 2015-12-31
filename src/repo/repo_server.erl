@@ -49,7 +49,7 @@ start_template(User, TemplateName) ->
 init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     io:format("~p starting~n", [?MODULE]),
-    {ok, create_state(Args)}.
+    {ok, create_state(Args)}.   % TODO: persist running ID and only use running ID from Args when no persistent ID is available
 
 handle_call({start_template, User, TemplateName, Args}, _From, State) ->
     case db:read_transactional(ibo_repo_template, TemplateName) of
