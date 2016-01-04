@@ -10,6 +10,7 @@
 -author("Florian").
 
 -include("xbo_records.hrl").
+-include("../xlib/xlib_state.hrl").
 
 %% xbo_router internal state -----------------------------------------
 -record(state, {
@@ -40,6 +41,7 @@ process_xbo(XBO, NewStepNr, NewStepData, Destination) ->    % main function wher
 end_xbo(XBO, NewStepData) ->
     gen_server:call(?MODULE, {end_xbo, XBO, NewStepData}).
 
+-spec debug_xbo(#xlib_state{},any()) -> ok | {error, nonempty_string()}.
 debug_xbo(XlibState, Reason) ->
     gen_server:call(?MODULE, {debug_xbo, XlibState, Reason}).
 
@@ -69,8 +71,8 @@ handle_call({process_xbo, XBO, NewStepNr, NewStepData, Destination}, _From, Stat
     end;
 handle_call({end_xbo, _XBO, _NewStepData}, _From, State) ->
     {reply, ok, State};    % TODO: store information of XBO here and archive it
-handle_call({debug_xbo, _XlibState, _Reason}, _From, State) ->
-    {reply, ok, State};    % TODO: forward it to deadletter/error
+handle_call({debug_xbo, XlibState, Reason}, _From, State) ->
+    {reply, deadletter_server:process_xbo(XlibState, Reason), State};    % TODO: like process_xbo, put in a child-process
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
@@ -94,8 +96,12 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%% Executing XBO Childprocess
 %%%===================================================================
 xbo_childprocess(Destination, NewXBO, NewStepNr) ->
-    %TODO: error handling here -> send to deadletter
-    ok = apply(list_to_atom(Destination), process_xbo, [NewXBO, NewStepNr]).
+    case apply(list_to_atom(Destination), process_xbo, [NewXBO, NewStepNr]) of
+        ok ->
+            ok; % nothing to do anymore
+        {error, Reason} ->
+            deadletter_server:process_xbo(NewXBO, NewStepNr, Reason) % TODO: add destination = last place where the XBO was and where the error occured, also include for calls on xbo_router's debug function
+    end.
 
 %%%===================================================================
 %%% Internal functions

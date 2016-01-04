@@ -30,6 +30,7 @@ init([]) ->
     {ok, { {one_for_one, 5, 10}, [
         ?CHILD(directory_server, worker),
         ?CHILD(box_server, worker),
+        ?CHILD(deadletter_server, worker),
         ?CHILD(xbo_router, worker, [[["box_server","blub_server","another_server"]]]), % Args = Allowed Services
         ?CHILD(repo_server, worker, [{["xbo_router"], ["should_be_deadletter_server"],"repo1",1}])
     ]} }.

@@ -12,6 +12,7 @@
 -include("directory/directory_records.hrl").
 -include("box/box_records.hrl").
 -include("repo/repo_records.hrl").
+-include("deadletter/deadletter_records.hrl").
 
 %% application -------------------------------------------------------
 -behaviour(application).
@@ -41,6 +42,10 @@ install(Nodes) ->
             {type, set}]),
     mnesia:create_table(ibo_repo_template,
         [{attributes, record_info(fields, ibo_repo_template)},
+            {disc_copies, Nodes},
+            {type, set}]),
+    mnesia:create_table(ibo_deadletterdata,
+        [{attributes, record_info(fields, ibo_deadletterdata)},
             {disc_copies, Nodes},
             {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]).
