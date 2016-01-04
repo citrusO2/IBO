@@ -113,8 +113,8 @@ json_post(Req, State) when State#state.type =:= detail ->
     Schema = State#state.ibo_boxdetail,
 
     case schema_validator:validate_data(Schema, Data) of
-        {ok, _Data} ->  % TODO use data here
-            case box_server:execute_xbo(State#state.xbo_id, Data) of
+        {ok, ValidData} ->
+            case box_server:execute_xbo(State#state.xbo_id, ValidData) of
                 {ok, xbo_send} ->
                     cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"xbo send\"}">>, Req);
                 {ok, xbo_end} ->
