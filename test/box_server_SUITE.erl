@@ -18,12 +18,12 @@
 -export([process_xbo_emptybox_test/1, process_xbo_nonemptybox_test/1,
     process_xbo_duplication_test/1,process_xbo_check_test/1,
     get_boxindices_test/1, get_boxindices_user_test/1, get_webinit_test/1,
-    execute_xbo_test/1]).
+    get_dynamicwebinit_test/1, execute_xbo_test/1]).
 
 all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test,
     process_xbo_duplication_test, process_xbo_check_test,
     get_boxindices_test, get_boxindices_user_test, get_webinit_test,
-    execute_xbo_test].
+    get_dynamicwebinit_test, execute_xbo_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -194,6 +194,16 @@ get_webinit_test(_Config) ->
     Commands = lists:nth(1, Step#ibo_xbostep.commands),
     [Schema|_] = Commands#ibo_xboline.args,
     {Group, Schema} = Response1.
+
+get_dynamicwebinit_test(_Config) ->
+    XBOstepnr = 1,
+    XBO = ?DYNWEBINITTESTXBO,
+    ok = box_server:process_xbo(XBO, XBOstepnr),
+
+    {_, ResponseSchema} = box_server:get_webinit(XBO#ibo_xbo.id),
+    ct_helper:print_var("ResponseSchema", ResponseSchema),
+    CorrectReply = <<"Wuhu, replaced task description">>,
+    CorrectReply = maps:get(<<"description">>, ResponseSchema).
 
 execute_xbo_test(_Config) ->
     XBOstepnr = 1,

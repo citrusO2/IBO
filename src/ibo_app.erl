@@ -19,7 +19,12 @@
 -export([start/2, stop/1]).
 
 %% API ---------------------------------------------------------------
--export([install/1, start_dependencies/0]).
+-export([install/0, install/1, start_dependencies/0, installtestdata/0]).
+
+install() ->
+    mnesia:stop(),
+    install([node()]),
+    mnesia:start().
 
 install(Nodes) ->
     ok = mnesia:create_schema(Nodes),
@@ -58,6 +63,11 @@ start_dependencies() ->
     application:set_env(mnesia, dir, "./ebin/mnesia"), % consider using configuration file
     ok = application:start(mnesia).
 
+installtestdata()->
+    repo_exampletemplates:install(),
+    directory_exampleusers:install(),
+    ok.
+
 start_web() ->
     io:format("cowboy webserver starting~n"),
     Dispatch = cowboy_router:compile([
@@ -65,6 +75,7 @@ start_web() ->
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
             {"/api/box/[:box_path]", box_handler, []},
             {"/api/directory/[:user_path]", directory_handler, []},
+            {"/api/repo/[:repo_path]", repo_handler, []},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}
     ]),

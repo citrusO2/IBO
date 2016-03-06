@@ -18,8 +18,8 @@
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
 
 %% API
--export([store_template_test/1, start_template_test/1]).
-all() -> [store_template_test, start_template_test].
+-export([store_template_test/1, start_template_test/1, retrieve_template_test/1]).
+all() -> [store_template_test, start_template_test, retrieve_template_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -81,4 +81,23 @@ start_template_test(_Config) ->
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
+    ok.
+
+retrieve_template_test(_Config) ->
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    Template1 = ?TEMPLATE_TESTTEMPLATE1,
+    Template2 = ?TEMPLATE_TESTTEMPLATE2,
+    Template3 = ?TEMPLATE_TESTTEMPLATE3,
+    ok = repo_server:store_template(Template1),
+    ok = repo_server:store_template(Template2),
+    ok = repo_server:store_template(Template3),
+    3 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+
+    User = ?MARKETINGUSER,
+    Response = repo_server:get_templatelist(User),
+    2 = length(Response),
+    true = lists:member(<<"marketingbudgetdecision">>, Response),
+    true = lists:member(<<"malala">>, Response),
+    false = lists:member(<<"wuhaha">>, Response),
+
     ok.

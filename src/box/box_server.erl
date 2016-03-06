@@ -76,7 +76,7 @@ handle_call({get_webinit, XBOid}, _From, State) ->
             {reply, {error,Reason}, State};
         Boxdata ->
             Config = get_webinit_conf(Boxdata),
-            {reply, xlib_box:webinit(Config), State}
+            {reply, xlib_box:webinit(Config), State} % TODO: make failsave -> server crashes when function webinit fails!
     end;
 handle_call({execute_xbo, XBOid, DataMap}, From, State) ->
     case is_xbo_executing(XBOid, State) of

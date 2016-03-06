@@ -133,4 +133,35 @@
         }
     ]);
 
+    iboControllers.controller('NewProcCtrl', ['$scope', '$routeParams','$http','AuthService',
+            function($scope, $routeParams, $http, AuthService) {
+                $scope.error = null;
+                $scope.processes = [];
+
+                $http.get('/api/repo', AuthService.currentHeader()).then(
+                    function(res){
+                        $scope.processes = res.data;
+                    },function(res){
+                        $scope.error = "Could not retrieve processes for the box!<br>";
+                        if(res.status == 500)
+                            $scope.error += "Internal server error (500)";
+                        else if(res.status == 404)
+                            $scope.error += "Cannot find the requested resource (404)";
+                        else if(res.status == 403)
+                            $scope.error += "You do not have access the requested resource (403)";
+                    }
+                );
+
+                $scope.startprocess = function(processName){
+                    var r = confirm("Start process \""+processName+"\"?");
+                    if(r == true){
+                        $http.post('/api/repo/'+processName,processName,AuthService.currentHeader()).then(
+                            function(res){$scope.success = "Process started successfully";},
+                            function(res){$scope.error = res.data.error;}
+                        );
+                    }
+                };
+            }
+        ]);
+
 })();

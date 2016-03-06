@@ -17,6 +17,10 @@
                 templateUrl: 'partials/boxdetail.html',
                 controller: 'BoxdetailCtrl',
                 activenav: 'detail'
+            }).when('/proclist', {
+                templateUrl: 'partials/proclist.html',
+                controller: 'NewProcCtrl',
+                activenav: 'detail'
             }).otherwise({
                 redirectTo: '/login'
             });

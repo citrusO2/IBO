@@ -1,0 +1,18 @@
+<div class="alert alert-danger" data-ng-show="error">
+    <strong>Error</strong> {{error}}
+</div>
+<div class="alert alert-success" data-ng-show="success">
+    <strong>Success!</strong> {{success}}
+</div>
+<h1 class="page-header">Start a new process</h1>
+
+<p data-ng-hide="processes.length">
+    No process available that you can start
+</p>
+
+<p data-ng-show="processes.length">
+    List of process templates:
+    <div class="list-group">
+        <button type="button" class="list-group-item" data-ng-repeat="process in processes" data-ng-click="startprocess(process)">{{process}}</button>
+    </div>
+</p>

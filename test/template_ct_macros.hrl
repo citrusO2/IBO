@@ -90,3 +90,29 @@
         transform = fun (XBO,_Args) -> XBO end  % = no change
     }
 ).
+
+-define(TEMPLATE_TESTTEMPLATE2,
+    #ibo_repo_template{
+        startdestination = "box_server",
+        startstepnr = 1,
+        steps = ?TEMPLATE_TESTSTEPS1,
+        groups = [<<"marketing">>, <<"maybes">>],
+        template = <<"malala">>,
+        template_version = 1,
+        ttl = 60*60*24*7,   % = 1 week
+        transform = fun (XBO,_Args) -> XBO end  % = no change
+    }
+).
+
+-define(TEMPLATE_TESTTEMPLATE3,
+    #ibo_repo_template{
+        startdestination = "box_server",
+        startstepnr = 1,
+        steps = ?TEMPLATE_TESTSTEPS1,
+        groups = [<<"it">>],
+        template = <<"wuhaha">>,
+        template_version = 1,
+        ttl = 60*60*24*7,   % = 1 week
+        transform = fun (XBO,_Args) -> XBO end  % = no change
+    }
+).

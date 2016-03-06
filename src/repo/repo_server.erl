@@ -9,6 +9,7 @@
 -module(repo_server).
 -author("Florian").
 
+-include_lib("stdlib/include/qlc.hrl").
 -include("repo_records.hrl").
 -include("../directory/directory_records.hrl").
 
@@ -26,7 +27,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/0, start_template/2, start_template/3, store_template/1]).
+-export([start_link/1, stop/0, start_template/2, start_template/3, store_template/1, get_templatelist/1]).
 
 start_link(Args) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
@@ -42,6 +43,9 @@ start_template(User, TemplateName, Args) ->
 
 start_template(User, TemplateName) ->
     start_template(User, TemplateName, []).
+
+get_templatelist(User) ->
+    gen_server:call(?MODULE, {get_templatelist, User}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -63,6 +67,8 @@ handle_call({start_template, User, TemplateName, Args}, _From, State) ->
 handle_call({store_template, Template}, _From, State) ->
     %% TODO: check repo template here
     {reply, db:write_transactional(Template), State};
+handle_call({get_templatelist, User}, _From, State) ->
+    {reply,get_templatelist_for_user(User), State};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
@@ -76,6 +82,19 @@ code_change(_OldVsn, N, _Extra) -> {ok, N}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+get_templatelist_for_user(User) ->
+    GroupNameList = User#ibo_user.groups,
+    Res = mnesia:transaction(
+        fun() ->
+            Q = qlc:q([ R#ibo_repo_template.template || R <- mnesia:table(ibo_repo_template),
+                G <- GroupNameList, lists:member(G, R#ibo_repo_template.groups)]),
+            qlc:e(Q)
+        end),
+    case Res of
+        {atomic, X} when is_list(X) -> X;
+        Err -> {error, {"Failed to retrieve templates", Err}}
+    end.
+
 create_xbo_response(Template, User, Args, State) -> %% TODO: put in a sub-process
     case is_any_listelement_in_list(User#ibo_user.groups, Template#ibo_repo_template.groups) of
         true ->
