@@ -72,7 +72,7 @@ sent_to_test(_Config) ->
 
     % sent to box_server via router
     ok = xbo_router:process_xbo(XBO, 1, #ibo_xbostepdata{stepnr = 1}, "box_server"),
-    ct_helper:wait(1), % in order to wait for the xbo to get processed by the box_server
+    ct_helper:wait(), % in order to wait for the xbo to get processed by the box_server
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
@@ -91,7 +91,7 @@ sent_to_baddestination_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     {error, "Destination is not allowed"} = xbo_router:process_xbo(?XBO, 1, #ibo_xbostepdata{stepnr = 1}, "black_hole"),
-    ct_helper:wait(1),
+    ct_helper:wait(),
 
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
@@ -102,7 +102,7 @@ sent_to_wrongdomain_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     0 = ct_helper:get_recordcount_in_table(ibo_deadletterdata),
     ok = xbo_router:process_xbo(?FAILXBO_WRONGDOMAIN, 1, #ibo_xbostepdata{stepnr = 1}, "box_server"),   % router does not wait anymore for a reply from the destination server, but sends an ok when the packet is received
-    ct_helper:wait(1),
+    ct_helper:wait(),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     1 = ct_helper:get_recordcount_in_table(ibo_deadletterdata),

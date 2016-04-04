@@ -77,7 +77,7 @@ start_template_test(_Config) ->
 
     ok = repo_server:store_template(Template),
     ok = repo_server:start_template(User, Template#ibo_repo_template.template),
-    ct_helper:wait(1),
+    ct_helper:wait(),
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),

@@ -61,12 +61,12 @@ cjump_test1(_Config)->
     XBO = ?LIBTEST1XBO,
 
     ok = box_server:process_xbo(XBO, XBOstepnr),
-    ct_helper:wait(1),
+    ct_helper:wait(),
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     {ok, xbo_end} = box_server:execute_xbo(XBO#ibo_xbo.id, #{<<"reason">> => <<"There is no alternative">>, <<"yesno">> => <<"yes">>}),
 
-    ct_helper:wait(1),
+    ct_helper:wait(),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),    % data gets deleted after successfull execution
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex).   % index for group does not get deleted, only updated
 
@@ -75,11 +75,11 @@ cjump_test2(_Config)->
     XBO = ?LIBTEST1XBO,
 
     ok = box_server:process_xbo(XBO, XBOstepnr),
-    ct_helper:wait(1),
+    ct_helper:wait(),
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
 
     {ok, xbo_send} = box_server:execute_xbo(XBO#ibo_xbo.id, #{<<"reason">> => <<"There is an alternative">>, <<"yesno">> => <<"no">>}),
-    ct_helper:wait(1),
+    ct_helper:wait(),
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex).

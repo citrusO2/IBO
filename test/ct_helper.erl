@@ -16,7 +16,7 @@
     create_table_for_record/3,
     read_transactional/2,
     get_recordcount_in_table/1,
-    wait/1]).
+    wait/1,wait/0,waitms/1]).
 
 add_record_to_mnesia(Record) ->
     F = fun() ->
@@ -63,7 +63,16 @@ get_recordcount_in_table(Table) ->
         _ -> {error, "Read failure"}
     end.
 
+% default wait period
+wait() ->
+    waitms(50).
+
 wait(Sec) ->
     receive
     after (1000 * Sec) -> ok
+    end.
+
+waitms(Msecs) ->
+    receive
+    after (Msecs) -> ok
     end.

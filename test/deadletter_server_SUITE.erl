@@ -64,7 +64,7 @@ store_routercase_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_deadletterdata),
 
     ok = xbo_router:debug_xbo(XlibState, "Just a testreason error message"),
-    ct_helper:wait(1),
+    ct_helper:wait(),
     1 = ct_helper:get_recordcount_in_table(ibo_deadletterdata),
 
     ok.
