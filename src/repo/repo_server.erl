@@ -30,22 +30,22 @@
 -export([start_link/1, stop/0, start_template/2, start_template/3, store_template/1, get_templatelist/1]).
 
 start_link(Args) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
+    gen_server:start_link({global, ?MODULE}, ?MODULE, Args, []).
 
 stop() ->
-    gen_server:call(?MODULE, stop).
+    gen_server:call({global,?MODULE}, stop).
 
 store_template(Template) when is_record(Template, ibo_repo_template) ->
-    gen_server:call(?MODULE, {store_template, Template}).
+    gen_server:call({global,?MODULE}, {store_template, Template}).
 
 start_template(User, TemplateName, Args) ->
-    gen_server:call(?MODULE, {start_template, User, TemplateName, Args}).
+    gen_server:call({global,?MODULE}, {start_template, User, TemplateName, Args}).
 
 start_template(User, TemplateName) ->
     start_template(User, TemplateName, []).
 
 get_templatelist(User) ->
-    gen_server:call(?MODULE, {get_templatelist, User}).
+    gen_server:call({global,?MODULE}, {get_templatelist, User}).
 
 %%%===================================================================
 %%% gen_server callbacks

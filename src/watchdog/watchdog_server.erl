@@ -47,15 +47,26 @@ init([]) ->
     % open settings from disk or create new settings on disk & start stored actors
     {ok, _} = dets:open_file(S#state.filename, []),
     Iactors = dets:foldl(fun({Name, Args} = Iactor, AccIn) ->
+        check_not_globally_registered(Name,watchdog_configuration_panic),   % configuration error, there shouldn't be another node with the same global iactors
         ok = add_iactor_to_supervisor(Name,Args),
         [Iactor|AccIn] end,[], S#state.filename),
     {ok, S#state{iactors = Iactors}}.
 
 handle_call({start_iactor, Name, Args}, _From, S) ->
-    ok = add_iactor_to_supervisor(Name, Args),  % try to start iactor first, otherwise a wrong call here would crash the server, which would then try to start the iactor again when restarting with the same errornous setings
-    ok = dets:insert(S#state.filename,{Name, Args}),
-    NewState = S#state{iactors = [{Name,Args}|S#state.iactors]},
-    {reply, ok, NewState};
+    case lists:keymember(Name, 1, S#state.iactors) of
+        true ->
+            {reply, {error, "watchdog already started iactor"}, S};
+        false ->
+            case global:whereis_name(Name) of
+                undefined ->
+                    ok = add_iactor_to_supervisor(Name, Args),  % try to start iactor first, otherwise a wrong call here would crash the server, which would then try to start the iactor again when restarting with the same erroneous settings
+                    ok = dets:insert(S#state.filename,{Name, Args}),
+                    NewState = S#state{iactors = [{Name,Args}|S#state.iactors]},
+                    {reply, ok, NewState};
+                _Pid -> %
+                    {reply, {error, "iactor already started globally"}, S}
+            end
+    end;
 handle_call({stop_iactor, Name}, _From, S) ->
     ok = remove_iactor_from_supervisor(Name),
     ok = dets:delete(S#state.filename, Name),
@@ -75,6 +86,13 @@ code_change(_OldVsn, N, _Extra) -> {ok, N}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+check_not_globally_registered(Name, IfErrorReason) ->
+    case global:whereis_name(Name) of
+        undefined ->
+            ok;
+        _Pid ->
+            error(IfErrorReason)
+    end.
 
 %%%===================================================================
 %%% Dynamic IBO actor adding / removing
