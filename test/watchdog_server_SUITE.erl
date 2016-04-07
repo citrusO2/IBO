@@ -49,6 +49,16 @@ start_iactor_test(_Config) ->   % it should be possible to start and stop an iac
     ok = watchdog_server:start_iactor(repo_sup),
     ct_helper:wait(),
     Ref2 = erlang:monitor(process,global:whereis_name(repo_server)),
+    ok = watchdog_server:start_iactor(error_sup),
+    ct_helper:wait(),
+    Ref3 = erlang:monitor(process,global:whereis_name(error_server)),
+    ok = watchdog_server:stop_iactor(error_sup),
+    receive
+        {'DOWN', Ref3, process, _Pid3, shutdown} ->
+            ok
+    after 1000 ->
+        error(exit_timeout)
+    end,
     ok = watchdog_server:stop_iactor(repo_sup),
     receive
         {'DOWN', Ref2, process, _Pid2, shutdown} ->
