@@ -25,8 +25,9 @@ end_per_suite(_Config) ->
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     start_watchdog_processes(Config).
 
-end_per_testcase(iactor_config_start_test, _Config) ->
-    dets:delete_all_objects(watchdog_configuration);    % watchdog processes are already not running (because they should crash)
+end_per_testcase(iactor_config_start_test, Config) ->
+    Config;
+    %dets:delete_all_objects(watchdog_configuration);    % watchdog processes are already not running (because they should crash)
 end_per_testcase(_, Config) ->
     dets:delete_all_objects(watchdog_configuration),    % persistend configuration for the watchdog need to be deleted, otherwise one tests affects the next one
     stop_watchdog_processes(Config).
@@ -41,6 +42,16 @@ start_iactor_test(_Config) ->   % it should be possible to start and stop an iac
     ok = watchdog_server:stop_iactor(repo_sup),
     receive
         {'DOWN', Ref, process, _Pid, shutdown} ->
+            ok
+    after 1000 ->
+        error(exit_timeout)
+    end,
+    ok = watchdog_server:start_iactor(repo_sup),
+    ct_helper:wait(),
+    Ref2 = erlang:monitor(process,global:whereis_name(repo_server)),
+    ok = watchdog_server:stop_iactor(repo_sup),
+    receive
+        {'DOWN', Ref2, process, _Pid2, shutdown} ->
             ok
     after 1000 ->
         error(exit_timeout)
@@ -116,6 +127,9 @@ iactor_config_start_test(Config) -> % watchdog_server should crash when it tries
     process_flag(trap_exit, false),
     false = l_is_registered(watchdog_server),
     repo_server:stop(),
+%%    true = dets:is_dets_file(watchdog_configuration),
+%%    {ok, _} = dets:open_file(watchdog_configuration),
+%%    dets:delete_all_objects(watchdog_configuration),
     ok.
 
 %%%===================================================================

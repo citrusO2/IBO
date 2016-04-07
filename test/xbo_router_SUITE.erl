@@ -10,7 +10,7 @@
 -author("Florian").
 
 -include("xbo_ct_macros.hrl").
--include("../src/deadletter/deadletter_records.hrl").
+-include("../src/error/error_records.hrl").
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
@@ -27,33 +27,33 @@ init_per_suite(Config) ->
     rpc:multicall(Nodes, application, start, [mnesia]),
     ct_helper:create_table_for_record(ibo_boxdata, record_info(fields, ibo_boxdata), Nodes),
     ct_helper:create_table_for_record(ibo_boxindex, record_info(fields, ibo_boxindex), Nodes),
-    ct_helper:create_table_for_record(ibo_deadletterdata, record_info(fields, ibo_deadletterdata), Nodes),
+    ct_helper:create_table_for_record(ibo_errordata, record_info(fields, ibo_errordata), Nodes),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     mnesia:start(),
-    mnesia:wait_for_tables([ibo_boxdata, ibo_boxindex, ibo_deadletterdata], 5000),
+    mnesia:wait_for_tables([ibo_boxdata, ibo_boxindex, ibo_errordata], 5000),
     Config.
 
 end_per_suite(_Config) ->
     Nodes = [node()],
     {atomic, ok} = mnesia:delete_table(ibo_boxdata),
     {atomic, ok} = mnesia:delete_table(ibo_boxindex),
-    {atomic, ok} = mnesia:delete_table(ibo_deadletterdata),
+    {atomic, ok} = mnesia:delete_table(ibo_errordata),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     ok = mnesia:delete_schema(Nodes).
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     box_server:start_link(),
     xbo_router:start_link([["box_server","blub_server","another_server"]]),
-    deadletter_server:start_link(),
+    error_server:start_link(),
     Config.
 
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_boxdata),
     mnesia:clear_table(ibo_boxindex),
-    mnesia:clear_table(ibo_deadletterdata),
+    mnesia:clear_table(ibo_errordata),
     box_server:stop(),
     xbo_router:stop(),
-    deadletter_server:stop(),
+    error_server:stop(),
     ok.
 
 %%%===================================================================
@@ -100,10 +100,10 @@ sent_to_baddestination_test(_Config) ->
 sent_to_wrongdomain_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    0 = ct_helper:get_recordcount_in_table(ibo_deadletterdata),
+    0 = ct_helper:get_recordcount_in_table(ibo_errordata),
     ok = xbo_router:process_xbo(?FAILXBO_WRONGDOMAIN, 1, #ibo_xbostepdata{stepnr = 1}, "box_server"),   % router does not wait anymore for a reply from the destination server, but sends an ok when the packet is received
     ct_helper:wait(),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    1 = ct_helper:get_recordcount_in_table(ibo_deadletterdata),
+    1 = ct_helper:get_recordcount_in_table(ibo_errordata),
     ok.

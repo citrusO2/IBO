@@ -72,7 +72,7 @@ handle_call({process_xbo, XBO, NewStepNr, NewStepData, Destination}, _From, Stat
 handle_call({end_xbo, _XBO, _NewStepData}, _From, State) ->
     {reply, ok, State};    % TODO: store information of XBO here and archive it
 handle_call({debug_xbo, XlibState, Reason}, _From, State) ->
-    {reply, deadletter_server:process_xbo(XlibState, Reason), State};    % TODO: like process_xbo, put in a child-process
+    {reply, error_server:process_xbo(XlibState, Reason), State};    % TODO: like process_xbo, put in a child-process
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
@@ -80,12 +80,12 @@ handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info({'EXIT', Pid, normal}, State) ->
     io:format("xbo_router trapped EXIT signal normal~n"),
-    NewState = remove_pid(Pid, State),
+    NewState = remove_pid_from_state(Pid, State),
     {noreply, NewState};
 handle_info({'EXIT', Pid, _Reason}, State) ->
     io:format("xbo_router trapped problematic EXIT signal -> TODO: handle the signal~n"),
-    %TODO: error handling here, log locally because the childprocess should already send problematic ones to deadletter
-    NewState = remove_pid(Pid, State),
+    %TODO: error handling here, log locally because the childprocess should already send problematic ones to the error server
+    NewState = remove_pid_from_state(Pid, State),
     {noreply, NewState}.
 terminate(_Reason, _State) ->
     io:format("~p stopping~n", [?MODULE]),
@@ -100,7 +100,7 @@ xbo_childprocess(Destination, NewXBO, NewStepNr) ->
         ok ->
             ok; % nothing to do anymore
         {error, Reason} ->
-            deadletter_server:process_xbo(NewXBO, NewStepNr, Reason) % TODO: add destination = last place where the XBO was and where the error occured, also include for calls on xbo_router's debug function
+            error_server:process_xbo(NewXBO, NewStepNr, Reason) % TODO: add destination = last place where the XBO was and where the error occured, also include for calls on xbo_router's debug function
     end.
 
 %%%===================================================================
@@ -109,5 +109,5 @@ xbo_childprocess(Destination, NewXBO, NewStepNr) ->
 save_pid(Pid, State) ->
     State#state{pids = [Pid | State#state.pids]}.
 
-remove_pid(Pid, State) ->
+remove_pid_from_state(Pid, State) ->
     State#state{pids = lists:dropwhile(fun(Element) -> Element =:= Pid end, State#state.pids)}.
