@@ -16,15 +16,16 @@
 -export([init/1]).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(Args) ->
+    %supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link(?MODULE, Args).
 
 %%%===================================================================
 %%% supervisor callbacks
 %%%===================================================================
-init([]) ->
+init(Args) ->
     SupFlags = ?FLAGS(one_for_all, 5, 10),
-    RepoServerChildSpec = ?CHILD(repo_server,worker, [{["xbo_router"], ["should_be_deadletter_server"],"repo1",1}]),
+    RepoServerChildSpec = ?CHILD(repo_server,worker, [Args]),
     {ok, {SupFlags, [RepoServerChildSpec]}}.

@@ -9,6 +9,11 @@
 -author("Florian").
 
 -include("../src/box/box_records.hrl").
+
+-define(BOX_NAME, <<"BOX1">>).
+-define(ROUTER_NAME, <<"ROUTER1">>).
+-define(ERROR_SERVER_NAME, <<"ERRORSRV1">>).
+
 -define(XBO_COMMANDS, [
     #ibo_xboline{
         library = xlib_box,
@@ -63,7 +68,7 @@
             }
         ]
     },#ibo_xboline{library = xlib, command = cjump, args = [4, fun(StepData, OtherStepData) -> case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else -> false end end]},
-    #ibo_xboline{library = xlib, command = send, args = [1, "box_server"]},
+    #ibo_xboline{library = xlib, command = send, args = [1, ?BOX_NAME]},
     #ibo_xboline{library = xlib, command = finish}
 ]).
 
@@ -101,7 +106,7 @@
     created_by = <<"hanswurst">>,
     template = <<"holidayapplication">>,
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,    % this XBO Step is meant for the "marketing" group (ibo_group.groupname)
         description = <<"Apply for your holidays">>,
         commands = ?XBO_COMMANDS
@@ -113,9 +118,10 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
-    router = ["xbo_router"],
+    router = [?ROUTER_NAME],
+    error =  [?ERROR_SERVER_NAME],
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = ?XBO_COMMANDS
@@ -127,9 +133,9 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
-    router = ["xbo_router"],
+    router = [?ROUTER_NAME],
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = ?XBO_COMMANDS3
@@ -141,9 +147,9 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
-    router = ["xbo_router"],
+    router = [?ROUTER_NAME],
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = ?XBO_COMMANDS2
@@ -155,6 +161,7 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
+    error = [?ERROR_SERVER_NAME],
     steps = [#ibo_xbostep{
         domain = <<"star_destroyer">>,
         local = <<"marketing">>,
@@ -169,7 +176,7 @@
     created_by = <<"hanswurst">>,
     template = <<"newvm">>,
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"it">>,
         description = <<"Create new VM">>,
         commands = ?XBO_COMMANDS
@@ -182,7 +189,7 @@
     created_by = <<"hanswurst">>,
     template = <<"production_maintenance_planning">>,
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"production">>,
         description = <<"Approve or deny the maintenance plan">>,
         commands = ?XBO_COMMANDS
@@ -194,9 +201,9 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
-    router = ["xbo_router"],
+    router = [?ROUTER_NAME],
     steps = [#ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = [
@@ -231,7 +238,7 @@
             #ibo_xboline{library = xlib, command = send, args = [2, "box_server"]}
         ]
     }, #ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = [#ibo_xboline{

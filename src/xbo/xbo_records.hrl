@@ -43,7 +43,7 @@
     template :: nonempty_string(),                  % unique xbo template name
     template_version :: non_neg_integer(),
     router :: nonempty_list(nonempty_string()),     % list of router to use, first in list = mainrouter for the package
-    deadletter :: nonempty_list(nonempty_string()), % list of server in charge of handling a dead letter
+    error :: nonempty_list(nonempty_string()), % list of server in charge of handling erroneous XBOs
     steps :: nonempty_list(#ibo_xbostep{}),
     % correlations :: list({non_neg_integer(), nonempty_string()}),  % a list with stepnr and correlation ids to merge xbos
     % signature :: binary(),                        % signing xbo to prevent modification

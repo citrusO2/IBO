@@ -11,4 +11,6 @@
 
 %% API
 -include("xbo_records.hrl").
--callback process_xbo(XBO :: #ibo_xbo{}, StepNr :: non_neg_integer()) -> ok | {error, any()}.
+
+%% the Name stands for the globally registered name
+-callback process_xbo(Name :: binary(), XBO :: #ibo_xbo{}, StepNr :: non_neg_integer()) -> ok | {error, any()}.

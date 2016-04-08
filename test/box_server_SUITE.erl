@@ -44,20 +44,20 @@ end_per_suite(_Config) ->
     ok = mnesia:delete_schema(Nodes).
 
 init_per_testcase(execute_xbo_test, Config) ->
-    box_server:start_link(),
-    xbo_router:start_link([["box_server","another_server"]]),
+    box_server:start_link(#{name =>?BOX_NAME}),
+    xbo_router:start_link(#{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>]}),
     Config;
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
-    box_server:start_link(),
+    box_server:start_link(#{name =>?BOX_NAME}),
     Config.
 
 end_per_testcase(execute_xbo_test, _Config) ->
-    xbo_router:stop(),
-    end_per_testcase(any,_Config);
+    xbo_router:stop(?ROUTER_NAME),
+    end_per_testcase(any, _Config);
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_boxdata),
     mnesia:clear_table(ibo_boxindex),
-    box_server:stop(),
+    box_server:stop(?BOX_NAME),
     ok.
 
 %%%===================================================================
@@ -72,7 +72,7 @@ process_xbo_emptybox_test(_Config) ->
     XBOid = XBO#ibo_xbo.id,
     XBOtemplate = XBO#ibo_xbo.template,
 
-    ok = box_server:process_xbo(XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, XBO, XBOstepnr),
 
     Record1 = ct_helper:read_transactional(ibo_boxdata, XBOid),
     Record2 = ct_helper:read_transactional(ibo_boxindex, BoxGroup),
@@ -92,8 +92,8 @@ process_xbo_nonemptybox_test(_Config) ->
     XBOid = XBO#ibo_xbo.id,
     XBOtemplate = XBO#ibo_xbo.template,
 
-    ok = box_server:process_xbo(?XBO, XBOstepnr),
-    ok = box_server:process_xbo(XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, XBO, XBOstepnr),
 
     Record1 = ct_helper:read_transactional(ibo_boxdata, XBOid),
     Record2 = ct_helper:read_transactional(ibo_boxindex, BoxGroup),
@@ -111,12 +111,12 @@ process_xbo_duplication_test(_Config) ->
     XBOstepnr = 1,
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    ok = Response1 = box_server:process_xbo(?XBO, XBOstepnr),
-    ok = Response2 = box_server:process_xbo(?NEWXBO, XBOstepnr),
+    ok = Response1 = box_server:process_xbo(?BOX_NAME, ?XBO, XBOstepnr),
+    ok = Response2 = box_server:process_xbo(?BOX_NAME, ?NEWXBO, XBOstepnr),
     2 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    {error, _} = Response3 = box_server:process_xbo(?XBO, XBOstepnr),
-    {error, _} = Response4 = box_server:process_xbo(?NEWXBO, XBOstepnr),
+    {error, _} = Response3 = box_server:process_xbo(?BOX_NAME, ?XBO, XBOstepnr),
+    {error, _} = Response4 = box_server:process_xbo(?BOX_NAME, ?NEWXBO, XBOstepnr),
     2 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ct_helper:print_var("Response1", Response1),
@@ -131,63 +131,63 @@ process_xbo_check_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
 
-    {error, _} = box_server:process_xbo(?XBO, XBOfailstepnr),
-    {error, _} = box_server:process_xbo(?NEWXBO, XBOfailstepnr),
+    {error, _} = box_server:process_xbo(?BOX_NAME, ?XBO, XBOfailstepnr),
+    {error, _} = box_server:process_xbo(?BOX_NAME, ?NEWXBO, XBOfailstepnr),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
 
-    {error, _} = box_server:process_xbo(?FAILXBO_WRONGDOMAIN, XBOstepnr),
+    {error, _} = box_server:process_xbo(?BOX_NAME, ?FAILXBO_WRONGDOMAIN, XBOstepnr),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
 
-    {error, _} = box_server:process_xbo(?XBO#ibo_xbo{id = ""}, XBOstepnr),
+    {error, _} = box_server:process_xbo(?BOX_NAME, ?XBO#ibo_xbo{id = ""}, XBOstepnr),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ok.
 
 get_boxindices_test(_Config) ->
     XBOstepnr = 1,
-    ok = box_server:process_xbo(?XBO, XBOstepnr),
-    ok = box_server:process_xbo(?NEWGROUPXBO1, XBOstepnr),
-    ok = box_server:process_xbo(?NEWGROUPXBO2, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?NEWGROUPXBO1, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?NEWGROUPXBO2, XBOstepnr),
 
-    Response1 = box_server:get_boxindices([<<"marketing">>, <<"it">>]),
+    Response1 = box_server:get_boxindices(?BOX_NAME, [<<"marketing">>, <<"it">>]),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= <<"production">> end, Response1),
     2 = erlang:length(Response1),
     ct_helper:print_var("Response1",Response1),
 
-    Response2 = box_server:get_boxindices([<<"marketing">>, <<"production">>]),
+    Response2 = box_server:get_boxindices(?BOX_NAME, [<<"marketing">>, <<"production">>]),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "it" end, Response2),
     2 = erlang:length(Response2),
     ct_helper:print_var("Response2",Response2),
 
-    Response3 = box_server:get_boxindices([<<"production">>, <<"it">>]),
+    Response3 = box_server:get_boxindices(?BOX_NAME, [<<"production">>, <<"it">>]),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "marketing" end, Response3),
     2 = erlang:length(Response3),
     ct_helper:print_var("Response3",Response3),
 
-    [] = Response4 = box_server:get_boxindices([<<"blablub">>, <<"miau">>]),
+    [] = Response4 = box_server:get_boxindices(?BOX_NAME, [<<"blablub">>, <<"miau">>]),
     ct_helper:print_var("Response1",Response4),
 
-    Response5 = box_server:get_boxindices([<<"marketing">>]),
+    Response5 = box_server:get_boxindices(?BOX_NAME, [<<"marketing">>]),
     true = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= <<"marketing">> end, Response5).
 
 get_boxindices_user_test(_Config) ->
     XBOstepnr = 1,
-    ok = box_server:process_xbo(?XBO, XBOstepnr),
-    ok = box_server:process_xbo(?NEWGROUPXBO1, XBOstepnr),
-    ok = box_server:process_xbo(?NEWGROUPXBO2, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?NEWGROUPXBO1, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, ?NEWGROUPXBO2, XBOstepnr),
 
     User = #ibo_user{username = <<"miau">>, firstname = <<"Mia">>, lastname = <<"Upurr">>, groups = ["marketing", "it"]},
-    Response1 = box_server:get_boxindices(User),
+    Response1 = box_server:get_boxindices(?BOX_NAME, User),
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "production" end, Response1).
 
 get_webinit_test(_Config) ->
     XBOstepnr = 1,
     XBO = ?NEWXBO,
-    ok = box_server:process_xbo(XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, XBO, XBOstepnr),
 
-    Response1 = box_server:get_webinit(XBO#ibo_xbo.id),
+    Response1 = box_server:get_webinit(?BOX_NAME, XBO#ibo_xbo.id),
 
     Step = lists:nth(1, XBO#ibo_xbo.steps),
     Group = Step#ibo_xbostep.local,
@@ -198,9 +198,9 @@ get_webinit_test(_Config) ->
 get_dynamicwebinit_test(_Config) ->
     XBOstepnr = 1,
     XBO = ?DYNWEBINITTESTXBO,
-    ok = box_server:process_xbo(XBO, XBOstepnr),
+    ok = box_server:process_xbo(?BOX_NAME, XBO, XBOstepnr),
 
-    {_, ResponseSchema} = box_server:get_webinit(XBO#ibo_xbo.id),
+    {_, ResponseSchema} = box_server:get_webinit(?BOX_NAME, XBO#ibo_xbo.id),
     ct_helper:print_var("ResponseSchema", ResponseSchema),
     CorrectReply = <<"Wuhu, replaced task description">>,
     CorrectReply = maps:get(<<"description">>, ResponseSchema).
@@ -208,7 +208,7 @@ get_dynamicwebinit_test(_Config) ->
 execute_xbo_test(_Config) ->
     XBOstepnr = 1,
     XBO = ?NEWXBO,
-    ok = box_server:process_xbo(XBO, XBOstepnr),
-    {ok, xbo_end} = box_server:execute_xbo(XBO#ibo_xbo.id, #{<<"reason">> => <<"There is no alternative">>, <<"yesno">> => <<"yes">>}),
+    ok = box_server:process_xbo(?BOX_NAME, XBO, XBOstepnr),
+    {ok, xbo_end} = box_server:execute_xbo(?BOX_NAME, XBO#ibo_xbo.id, #{<<"reason">> => <<"There is no alternative">>, <<"yesno">> => <<"yes">>}),
 
     ok.

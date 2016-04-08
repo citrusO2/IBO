@@ -16,15 +16,16 @@
 -export([init/1]).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(Args) ->
+    %supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link(?MODULE, Args).
 
 %%%===================================================================
 %%% supervisor callbacks
 %%%===================================================================
-init([]) ->
+init(Args) ->
     SupFlags = ?FLAGS(one_for_all, 5, 10),
-    ErrorServerChildSpec = ?CHILD(error_server,worker),
+    ErrorServerChildSpec = ?CHILD(error_server,worker, [Args]),
     {ok, {SupFlags, [ErrorServerChildSpec]}}.

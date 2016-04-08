@@ -14,11 +14,8 @@
 %% API
 -export([webinit/1]).
 
--spec webinit(State :: #xlib_state{}) -> {Group :: nonempty_string(), Taskdetails :: any()}.
-
-
-
 % Step which initializes the web interface for the users
+-spec webinit(State :: #xlib_state{}) -> { Group :: binary(), Taskdetails :: #{} }.
 webinit(State) ->
     1 = State#xlib_state.current_linenr,
     Step = xlib:get_current_step(State),

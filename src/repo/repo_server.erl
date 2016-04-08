@@ -15,10 +15,10 @@
 
 %% repo_server internal state ----------------------------------------
 -record(state, {
-    router :: nonempty_list(nonempty_string()),
-    deadletter :: nonempty_list(nonempty_string()),
-    id_prefix :: nonempty_string(), % prefix before ID so that there is no clash when having several repo servers
-    n :: non_neg_integer()          % running number for ID-Generation
+    router :: nonempty_list(binary()),  % list of routers to use
+    error :: nonempty_list(binary()),   % list of error handling servers
+    name :: binary(),                   % name, which is also the prefix before the ID so that there is no clash when having several repo servers
+    n :: non_neg_integer()              % running number for ID-Generation
 }).
 
 %% gen_server --------------------------------------------------------
@@ -27,25 +27,38 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/0, start_template/2, start_template/3, store_template/1, get_templatelist/1]).
+-export([start_link/1, stop/1, start_template/3, start_template/4, store_template/2, get_templatelist/2]).
 
+%% starts a new global repo server with its name
+-spec start_link(Args :: #{name => binary(), router => nonempty_list(binary()), error => nonempty_list(binary()), n => non_neg_integer()}) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
 start_link(Args) ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, Args, []).
+    Name = maps:get(name, Args),
+    gen_server:start_link({global, Name}, ?MODULE, Args, []).
 
-stop() ->
-    gen_server:call({global,?MODULE}, stop).
+%% stops a repo by its name
+-spec stop(Repo :: binary()) -> ok.
+stop(Repo) ->
+    gen_server:call({global,Repo}, stop).
 
-store_template(Template) when is_record(Template, ibo_repo_template) ->
-    gen_server:call({global,?MODULE}, {store_template, Template}).
+%% store a template in the repository
+-spec store_template(Repo :: binary(), Template :: #ibo_repo_template{}) -> ok | {error, term()}.
+store_template(Repo, Template) when is_record(Template, ibo_repo_template) ->
+    gen_server:call({global,Repo}, {store_template, Template}).
 
-start_template(User, TemplateName, Args) ->
-    gen_server:call({global,?MODULE}, {start_template, User, TemplateName, Args}).
+%% starts the template determined by the template name, filled with the Args and checked if the user is allowed to execute it
+-spec start_template(Repo :: binary(), User :: #ibo_user{}, TemplateName :: binary(), Args :: [] | any()) -> ok | {error, not_found} | {error, term()}.
+start_template(Repo, User, TemplateName, Args) ->
+    gen_server:call({global,Repo}, {start_template, User, TemplateName, Args}).
 
-start_template(User, TemplateName) ->
-    start_template(User, TemplateName, []).
+%% like start_template/3, just without Args
+-spec start_template(Repo :: binary(), User :: #ibo_user{}, TemplateName :: binary()) -> ok | {error, not_found} | {error, term()}.
+start_template(Repo, User, TemplateName) ->
+    start_template(Repo, User, TemplateName, []).
 
-get_templatelist(User) ->
-    gen_server:call({global,?MODULE}, {get_templatelist, User}).
+%% gets a list of template for a particular user
+-spec get_templatelist(Repo :: binary(), User :: #ibo_user{}) -> [] | [binary()] | {error, term()}.
+get_templatelist(Repo, User) ->
+    gen_server:call({global,Repo}, {get_templatelist, User}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -53,7 +66,7 @@ get_templatelist(User) ->
 init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     io:format("~p starting~n", [?MODULE]),
-    {ok, create_state(Args)}.   % TODO: persist running ID and only use running ID from Args when no persistent ID is available
+    {ok, create_init_state(Args)}.   % TODO: persist running ID and only use running ID from Args when no persistent ID is available
 
 handle_call({start_template, User, TemplateName, Args}, _From, State) ->
     case db:read_transactional(ibo_repo_template, TemplateName) of
@@ -111,12 +124,12 @@ create_xbo_response(Template, User, Args, State) -> %% TODO: put in a sub-proces
 
 %% sends the xbo to the router and replies to the original sender
 send_xbo_response(XBO, Template, State) ->
-    Router = get_first_router(XBO),
-    case erlang:apply(list_to_atom(Router), process_xbo, [XBO, Template#ibo_repo_template.startstepnr, Template#ibo_repo_template.startdestination]) of
+    Router = get_first_router(XBO), % TODO: create better router selection
+    case xbo_router:process_xbo(Router, XBO, Template#ibo_repo_template.startstepnr, Template#ibo_repo_template.startdestination) of
         ok ->
             {reply, ok, State#state{n = State#state.n + 1}};
-        Else ->
-            {reply, Else, State}
+        {error, Reason} ->
+            {reply, {error, Reason}, State}
     end.
 
 transform_xbo(XBO, TransformFun, Args) ->
@@ -130,25 +143,21 @@ transform_xbo(XBO, TransformFun, Args) ->
 create_xbo(Template, State, User) when is_record(Template, ibo_repo_template) ->
     CurrentTime = os:timestamp(),
     #ibo_xbo{
-        id = list_to_binary(State#state.id_prefix ++ "-" ++ integer_to_list(State#state.n)),
+        id = binary:list_to_bin([State#state.name, <<"-">>, integer_to_list(State#state.n)]),
         ttl = add_seconds_to_timestamp(CurrentTime, Template#ibo_repo_template.ttl),
         create_time = CurrentTime,
         created_by = User#ibo_user.username,
         template = Template#ibo_repo_template.template,
         template_version = Template#ibo_repo_template.template_version,
         router = State#state.router,    % TODO: scramble router list so that the XBOs get distributed across several router
-        deadletter = State#state.deadletter,
+        error = State#state.error,
         steps = Template#ibo_repo_template.steps}.
 
 %%%===================================================================
 %%% Helper functions
 %%%===================================================================
-create_state(Args) ->
-    Router = element(1, Args),
-    Deadletter = element(2, Args),
-    Id_prefix = element(3, Args),
-    N = element(4, Args),
-    #state{router = Router, deadletter = Deadletter, id_prefix = Id_prefix, n = N}.
+create_init_state(Args) ->
+    #state{router = maps:get(router, Args), error = maps:get(error, Args), name = maps:get(name, Args), n = maps:get(n, Args)}.
 
 now_to_seconds({Mega, Sec, _}) ->
     (Mega * 1000000) + Sec.

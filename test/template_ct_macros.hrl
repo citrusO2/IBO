@@ -12,11 +12,15 @@
 -include("../src/repo/repo_records.hrl").
 -include("../src/directory/directory_records.hrl").
 
+-define(BOX_NAME, <<"BOX1">>).
+-define(ROUTER_NAME, <<"ROUTER1">>).
+-define(REPO_NAME, <<"REPO1">>).
+
 -define(MARKETINGUSER, #ibo_user{username = <<"dd">>, firstname = <<"Doris">>, lastname = <<"Dührwald">>, groups = [<<"marketing">>]}).
 
 -define(TEMPLATE_TESTSTEPS1, [
     #ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = [
@@ -51,7 +55,7 @@
             #ibo_xboline{library = xlib, command = send, args = [2, "box_server"]}
         ]},
     #ibo_xbostep{
-        domain = <<"box_server">>,
+        domain = ?BOX_NAME,
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = [#ibo_xboline{
@@ -80,7 +84,7 @@
 
 -define(TEMPLATE_TESTTEMPLATE1,
     #ibo_repo_template{
-        startdestination = "box_server",
+        startdestination = ?BOX_NAME,
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"marketing">>],
@@ -93,7 +97,7 @@
 
 -define(TEMPLATE_TESTTEMPLATE2,
     #ibo_repo_template{
-        startdestination = "box_server",
+        startdestination = ?BOX_NAME,
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"marketing">>, <<"maybes">>],
@@ -106,7 +110,7 @@
 
 -define(TEMPLATE_TESTTEMPLATE3,
     #ibo_repo_template{
-        startdestination = "box_server",
+        startdestination = ?BOX_NAME,
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"it">>],

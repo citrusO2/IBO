@@ -2,7 +2,14 @@
 %%% @author Florian
 %%% @copyright (C) 2015, <COMPANY>
 %%% @doc
-%%%     Server where XBOs are stored for access via web
+%%%     The box stores XBOs which need further input from other users or machines, before they can be executed further
+%%%
+%%%     process_xbo checks the XBO and stores it for further execution in the box
+%%%     get_boxindices retrieves overview information of the XBOs, depending on the provided user or group names which where used to store them
+%%%
+%%% execute_xbo then really tries to execute the XBO with the given DataMap
+%%%
+%%%
 %%% @end
 %%% Created : 21. Nov 2015 17:41
 %%%-------------------------------------------------------------------
@@ -16,10 +23,9 @@
 
 %% box_server internal state ------------------------------------------
 -record(state, {
-    domain :: nonempty_string(),
+    domain :: binary(),
     workers = [] :: list({pid(), #xlib_state{}})
 }).
-
 
 %% gen_server --------------------------------------------------------
 -behaviour(gen_server).
@@ -27,35 +33,50 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0, process_xbo/2, get_boxindices/1, get_webinit/1, execute_xbo/2, xbo_childprocess/3]).
+-export([start_link/1, stop/1, process_xbo/3, get_boxindices/2, get_webinit/2, execute_xbo/3, xbo_childprocess/4]).
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+%% starts a new global box server with the given name as the global name
+-spec start_link(Args :: #{name => binary()} ) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
+start_link(Args) when is_map(Args)->
+    Name = maps:get(name, Args),
+    gen_server:start_link({global, Name}, ?MODULE, Args, []).
 
-stop() ->
-    gen_server:call(?MODULE, stop).
+%% stops a box by its name
+-spec stop(Box :: binary()) -> ok.
+stop(Box) ->
+    gen_server:call({global, Box}, stop).
 
-process_xbo(XBO, StepNr) ->    % main function where IBOs get send to from other servers
-    gen_server:call(?MODULE, {process_xbo, XBO, StepNr}).
+%% processes a XBO on the box, but it is not actually executed yet, but simply stored
+-spec process_xbo(Box :: binary(), XBO :: #ibo_xbo{}, StepNr :: non_neg_integer()) -> ok | {error, nonempty_string()}.
+process_xbo(Box, XBO, StepNr) ->
+    gen_server:call({global, Box}, {process_xbo, XBO, StepNr}). % main function where IBOs get send to from other servers, the important part is the {process_xbo,..,..} message that the box receives
 
-execute_xbo(XBOid, DataMap) ->
-    gen_server:call(?MODULE, {execute_xbo, XBOid, DataMap}).
+%% actually executes the XBO because the necessary Data are provided via the given DataMap
+-spec execute_xbo(Box :: binary(), XBOid :: binary(), DataMap :: #{}) -> {ok, xbo_end} | {ok, xbo_send} | {error, atom() | nonempty_string()}.
+execute_xbo(Box, XBOid, DataMap) ->  %% TODO: add which User/Machine really executed the XBO
+    gen_server:call({global, Box}, {execute_xbo, XBOid, DataMap}).
 
-get_boxindices(GroupNameList) when is_list(GroupNameList) ->
-    gen_server:call(?MODULE, {get_boxindices, GroupNameList});
-get_boxindices(User) when is_record(User, ibo_user) ->
-    get_boxindices(User#ibo_user.groups).
+%% retrieves an overview for the given groupnames or the given user
+-spec get_boxindices(Box :: binary, Groupnamelist :: nonempty_list(binary()) ) -> [] | [#ibo_boxindex{}] | {error, {nonempty_string(), MnesiaError :: term()}};
+                    (Box :: binary, User :: #ibo_user{} ) -> [] | [#ibo_boxindex{}] | {error, {nonempty_string(), MnesiaError :: term()}}.
+get_boxindices(Box, GroupNameList) when is_list(GroupNameList) ->
+    gen_server:call({global, Box}, {get_boxindices, GroupNameList});
+get_boxindices(Box, User) when is_record(User, ibo_user) ->
+    get_boxindices(Box, User#ibo_user.groups).
 
-get_webinit(XBOid) ->   % first ibo_xboline in ibo_xbostep to initialize the steps for the web-access
-    gen_server:call(?MODULE, {get_webinit, XBOid}).
+%% retrieves the initialisation for the webinterface, which consists of a map with a schema, which is later converted to a json-schema
+-spec get_webinit(Box :: binary(), XBOid :: binary()) -> { GroupName :: binary(), map()} | {error, not_found } | {error, MnesiaError :: term()}.
+get_webinit(Box, XBOid) ->   % first ibo_xboline in ibo_xbostep to initialize the steps for the web-access
+    gen_server:call({global, Box}, {get_webinit, XBOid}).
 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
-init([]) ->
+init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
-    io:format("~p starting~n", [?MODULE]),
-    {ok, #state{domain = list_to_binary(atom_to_list(?MODULE))}}. % initial state
+    Name = maps:get(name, Args),
+    io:format("~p (~p) starting~n", [?MODULE, Name]),
+    {ok, #state{domain = Name}}. % initial state
 
 handle_call({process_xbo, XBO, StepNr}, _From, State) ->
     try check_xbo(XBO, StepNr, State) of
@@ -92,7 +113,7 @@ handle_call({execute_xbo, XBOid, DataMap}, From, State) ->
                     %start subprocess that does the actual execution and the reply as well
                     Config = get_process_conf(Boxdata, DataMap),
                     Router = get_first_router(Boxdata),
-                    Pid = spawn_link(?MODULE, xbo_childprocess, [Config, Router, From]),
+                    Pid = spawn_link(?MODULE, xbo_childprocess, [Config, Router, From, State#state.domain]),
                     NewState = save_worker(Pid, Config, State),
                     {noreply, NewState}
             end
@@ -121,7 +142,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%%===================================================================
 %%% Executing XBO Childprocess
 %%%===================================================================
-xbo_childprocess(Config, Router, From) ->
+xbo_childprocess(Config, Router, From, ServerName) ->
     io:format("xbo_childprocess started"),
 
     Result = try xlib:start(Config) of
@@ -130,10 +151,10 @@ xbo_childprocess(Config, Router, From) ->
         {send, XlibState, NewStepNr, NewDestination} ->
             xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination);
         {error, XlibState, Reason} ->   % error detected by xlib, which returned error
-            xbo_childprocess_error(Router, XlibState, Reason)
+            xbo_childprocess_error(Router, XlibState, Reason, ServerName)
     catch
         _:Error ->
-            xbo_childprocess_error(Router, Config, Error)
+            xbo_childprocess_error(Router, Config, Error, ServerName)
     end,
     gen_server:reply(From, Result),
     Result.
@@ -143,7 +164,7 @@ xbo_childprocess_finish(Router, XlibState) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            ok = erlang:apply(list_to_atom(Router), end_xbo, [XlibState#xlib_state.xbo, XlibState#xlib_state.current_stepdata])    % TODO: change when there are more than one router
+            ok = xbo_router:end_xbo(Router, XlibState#xlib_state.xbo, XlibState#xlib_state.current_stepdata)
         end
     ),
     case Res of
@@ -155,7 +176,7 @@ xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            ok = erlang:apply(list_to_atom(Router), process_xbo, [XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination])    % TODO: change when there are more than one router
+            ok = xbo_router:process_xbo(Router, XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination)
         end
     ),
     case Res of
@@ -163,11 +184,11 @@ xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination) ->
         {aborted, Reason} -> {error, Reason}
     end.
 
-xbo_childprocess_error(Router, XlibState, Reason) ->
+xbo_childprocess_error(Router, XlibState, Reason, OwnName) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            ok = erlang:apply(list_to_atom(Router), debug_xbo, [XlibState, Reason])    % TODO: change when there are more than one router
+            xbo_router:debug_xbo(Router, XlibState, Reason, OwnName)
         end
     ),
     case Res of

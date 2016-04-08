@@ -43,18 +43,18 @@ end_per_suite(_Config) ->
     ok = mnesia:delete_schema(Nodes).
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
-    box_server:start_link(),
-    xbo_router:start_link([["box_server","blub_server","another_server"]]),
-    repo_server:start_link({["xbo_router"], ["should_be_deadletter_server"],"repo1",1}),
+    box_server:start_link(#{name =>?BOX_NAME}),
+    xbo_router:start_link(#{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}),
+    repo_server:start_link(#{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [<<"my_error_server">>], n => 1 }),
     Config.
 
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_boxdata),
     mnesia:clear_table(ibo_boxindex),
     mnesia:clear_table(ibo_repo_template),
-    box_server:stop(),
-    xbo_router:stop(),
-    repo_server:stop(),
+    box_server:stop(?BOX_NAME),
+    xbo_router:stop(?ROUTER_NAME),
+    repo_server:stop(?REPO_NAME),
     ok.
 
 %%%===================================================================
@@ -64,7 +64,7 @@ store_template_test(_Config) ->
     Template = ?TEMPLATE_TESTTEMPLATE1,
 
     0 = ct_helper:get_recordcount_in_table(ibo_repo_template),
-    ok = repo_server:store_template(Template),
+    ok = repo_server:store_template(?REPO_NAME, Template),
     1 = ct_helper:get_recordcount_in_table(ibo_repo_template),
     ok.
 
@@ -75,8 +75,8 @@ start_template_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
 
-    ok = repo_server:store_template(Template),
-    ok = repo_server:start_template(User, Template#ibo_repo_template.template),
+    ok = repo_server:store_template(?REPO_NAME, Template),
+    ok = repo_server:start_template(?REPO_NAME, User, Template#ibo_repo_template.template),
     ct_helper:wait(),
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
@@ -88,13 +88,13 @@ retrieve_template_test(_Config) ->
     Template1 = ?TEMPLATE_TESTTEMPLATE1,
     Template2 = ?TEMPLATE_TESTTEMPLATE2,
     Template3 = ?TEMPLATE_TESTTEMPLATE3,
-    ok = repo_server:store_template(Template1),
-    ok = repo_server:store_template(Template2),
-    ok = repo_server:store_template(Template3),
+    ok = repo_server:store_template(?REPO_NAME, Template1),
+    ok = repo_server:store_template(?REPO_NAME, Template2),
+    ok = repo_server:store_template(?REPO_NAME, Template3),
     3 = ct_helper:get_recordcount_in_table(ibo_repo_template),
 
     User = ?MARKETINGUSER,
-    Response = repo_server:get_templatelist(User),
+    Response = repo_server:get_templatelist(?REPO_NAME, User),
     2 = length(Response),
     true = lists:member(<<"marketingbudgetdecision">>, Response),
     true = lists:member(<<"malala">>, Response),

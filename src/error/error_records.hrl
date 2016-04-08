@@ -15,7 +15,8 @@
 
 -record(ibo_errorcase, {
     xlibstate :: #xlib_state{},
-    error :: any()
+    error :: any(),
+    destination :: binary()     % the destination of where the XBO should have been send
 }).
 
 -record(ibo_errordata, {
