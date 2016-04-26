@@ -124,8 +124,7 @@ create_xbo_response(Template, User, Args, State) -> %% TODO: put in a sub-proces
 
 %% sends the xbo to the router and replies to the original sender
 send_xbo_response(XBO, Template, State) ->
-    Router = get_first_router(XBO), % TODO: create better router selection
-    case xbo_router:process_xbo(Router, XBO, Template#ibo_repo_template.startstepnr, Template#ibo_repo_template.startdestination) of
+    case xbo_router:process_xbo(XBO, Template#ibo_repo_template.startstepnr, Template#ibo_repo_template.startdestination) of
         ok ->
             {reply, ok, State#state{n = State#state.n + 1}};
         {error, Reason} ->
@@ -168,6 +167,3 @@ add_seconds_to_timestamp(Timestamp, Seconds) ->
 
 is_any_listelement_in_list(ListElements, List) ->
     lists:any(fun(Element) -> lists:member(Element, List) end, ListElements).
-
-get_first_router(XBO) ->
-    lists:nth(1, XBO#ibo_xbo.router).

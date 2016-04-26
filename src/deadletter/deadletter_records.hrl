@@ -8,19 +8,16 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
--include("../xlib/xlib_state.hrl").
+-include("../xbo/xbo_records.hrl").
 
 -ifndef(DEADLETTER_RECORDS_HRL).
 -define(DEADLETTER_RECORDS_HRL, 1).
 
--record(ibo_deadlettercase, {
-    xlibstate :: #xlib_state{},
-    error :: any()
-}).
-
 -record(ibo_deadletterdata, {
-    xboid :: nonempty_string(),
-    cases :: nonempty_list(#ibo_deadlettercase{})   % it is possible to have the same XBO traveling at the same time but throwing a different error
+    destination :: binary(),
+    xbo :: #ibo_xbo{},
+    newstepdata :: #ibo_xbostepdata{},
+    newstep :: non_neg_integer()
 }).
 
 -endif. % DEADLETTER_RECORDS_HRL defined

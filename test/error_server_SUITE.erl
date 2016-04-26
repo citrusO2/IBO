@@ -63,7 +63,7 @@ store_routercase_test(_Config) ->
     XlibState = #xlib_state{xbo = XBO, current_stepdata = #ibo_xbostepdata{stepnr = 1}},
     0 = ct_helper:get_recordcount_in_table(ibo_errordata),
 
-    ok = xbo_router:debug_xbo(?ROUTER_NAME, XlibState, "Just a testreason error message", ?BOX_NAME),
+    ok = xbo_router:debug_xbo(XlibState, "Just a testreason error message", ?BOX_NAME),
     ct_helper:wait(),
     1 = ct_helper:get_recordcount_in_table(ibo_errordata),
 

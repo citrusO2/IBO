@@ -33,7 +33,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/1, process_xbo/3, get_boxindices/2, get_webinit/2, execute_xbo/3, xbo_childprocess/4]).
+-export([start_link/1, stop/1, process_xbo/3, get_boxindices/2, get_webinit/2, execute_xbo/3, xbo_childprocess/3]).
 
 %% starts a new global box server with the given name as the global name
 -spec start_link(Args :: #{name => binary()} ) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -112,8 +112,7 @@ handle_call({execute_xbo, XBOid, DataMap}, From, State) ->
                 Boxdata ->
                     %start subprocess that does the actual execution and the reply as well
                     Config = get_process_conf(Boxdata, DataMap),
-                    Router = get_first_router(Boxdata),
-                    Pid = spawn_link(?MODULE, xbo_childprocess, [Config, Router, From, State#state.domain]),
+                    Pid = spawn_link(?MODULE, xbo_childprocess, [Config, From, State#state.domain]),
                     NewState = save_worker(Pid, Config, State),
                     {noreply, NewState}
             end
@@ -142,29 +141,29 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%%===================================================================
 %%% Executing XBO Childprocess
 %%%===================================================================
-xbo_childprocess(Config, Router, From, ServerName) ->
+xbo_childprocess(Config, From, ServerName) ->
     io:format("xbo_childprocess started"),
 
     Result = try xlib:start(Config) of
         {finish, XlibState} ->
-            xbo_childprocess_finish(Router, XlibState);
+            xbo_childprocess_finish(XlibState);
         {send, XlibState, NewStepNr, NewDestination} ->
-            xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination);
+            xbo_childprocess_send(XlibState, NewStepNr, NewDestination);
         {error, XlibState, Reason} ->   % error detected by xlib, which returned error
-            xbo_childprocess_error(Router, XlibState, Reason, ServerName)
+            xbo_childprocess_error(XlibState, Reason, ServerName)
     catch
         _:Error ->
-            xbo_childprocess_error(Router, Config, Error, ServerName)
+            xbo_childprocess_error(Config, Error, ServerName)
     end,
     gen_server:reply(From, Result),
     Result.
 
 %removes the necessary data from the database, sends the xbo to the router and replies to the process which started the xbo execution
-xbo_childprocess_finish(Router, XlibState) ->
+xbo_childprocess_finish(XlibState) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            ok = xbo_router:end_xbo(Router, XlibState#xlib_state.xbo, XlibState#xlib_state.current_stepdata)
+            ok = xbo_router:end_xbo(XlibState#xlib_state.xbo, XlibState#xlib_state.current_stepdata)
         end
     ),
     case Res of
@@ -172,11 +171,11 @@ xbo_childprocess_finish(Router, XlibState) ->
         {aborted, Reason} -> {error, Reason}
     end.
 
-xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination) ->
+xbo_childprocess_send(XlibState, NewStepNr, NewDestination) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            ok = xbo_router:process_xbo(Router, XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination)
+            ok = xbo_router:process_xbo(XlibState#xlib_state.xbo, NewStepNr, XlibState#xlib_state.current_stepdata, NewDestination)
         end
     ),
     case Res of
@@ -184,11 +183,11 @@ xbo_childprocess_send(Router, XlibState, NewStepNr, NewDestination) ->
         {aborted, Reason} -> {error, Reason}
     end.
 
-xbo_childprocess_error(Router, XlibState, Reason, OwnName) ->
+xbo_childprocess_error(XlibState, Reason, OwnName) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            xbo_router:debug_xbo(Router, XlibState, Reason, OwnName)
+            xbo_router:debug_xbo(XlibState, Reason, OwnName)
         end
     ),
     case Res of
@@ -305,8 +304,8 @@ get_process_conf(Boxdata, DataMap) ->
     Stepdata = #ibo_xbostepdata{stepnr = Boxdata#ibo_boxdata.xbostepnr, vars = DataMap},
     #xlib_state{current_linenr = 2, xbo = Boxdata#ibo_boxdata.xbodata, current_stepdata = Stepdata}.
 
-get_first_router(Boxdata) ->
-    lists:nth(1, Boxdata#ibo_boxdata.xbodata#ibo_xbo.router).
+%%get_first_router(Boxdata) ->
+%%    lists:nth(1, Boxdata#ibo_boxdata.xbodata#ibo_xbo.router).
 
 save_worker(Pid, Config, State) ->
     State#state{workers = [{Pid, Config} |State#state.workers]}.

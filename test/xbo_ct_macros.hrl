@@ -12,6 +12,7 @@
 
 -define(BOX_NAME, <<"BOX1">>).
 -define(ROUTER_NAME, <<"ROUTER1">>).
+-define(ROUTER2_NAME, <<"ROUTER2">>).
 -define(ERROR_SERVER_NAME, <<"ERRORSRV1">>).
 
 -define(XBO_COMMANDS, [
@@ -105,6 +106,7 @@
     format_indicator = 1,
     created_by = <<"hanswurst">>,
     template = <<"holidayapplication">>,
+    router = [?ROUTER_NAME, ?ROUTER2_NAME],
     steps = [#ibo_xbostep{
         domain = ?BOX_NAME,
         local = <<"marketing">>,    % this XBO Step is meant for the "marketing" group (ibo_group.groupname)
@@ -119,6 +121,36 @@
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
     router = [?ROUTER_NAME],
+    error =  [?ERROR_SERVER_NAME],
+    steps = [#ibo_xbostep{
+        domain = ?BOX_NAME,
+        local = <<"marketing">>,
+        description = <<"Accept or deny the marketing budget">>,
+        commands = ?XBO_COMMANDS
+    }]
+}).
+
+-define(NEWXBO2, #ibo_xbo{
+    id = <<"1-141233">>,
+    format_indicator = 1,
+    created_by = <<"hanswurst">>,
+    template = <<"marketingbudgetdecision">>,
+    router = [?ROUTER2_NAME],
+    error =  [?ERROR_SERVER_NAME],
+    steps = [#ibo_xbostep{
+        domain = ?BOX_NAME,
+        local = <<"marketing">>,
+        description = <<"Accept or deny the marketing budget">>,
+        commands = ?XBO_COMMANDS
+    }]
+}).
+
+-define(NEWXBO3, #ibo_xbo{
+    id = <<"1-141233">>,
+    format_indicator = 1,
+    created_by = <<"hanswurst">>,
+    template = <<"marketingbudgetdecision">>,
+    router = [?ROUTER_NAME, ?ROUTER2_NAME],
     error =  [?ERROR_SERVER_NAME],
     steps = [#ibo_xbostep{
         domain = ?BOX_NAME,
@@ -162,6 +194,7 @@
     created_by = <<"hanswurst">>,
     template = <<"marketingbudgetdecision">>,
     error = [?ERROR_SERVER_NAME],
+    router = [?ROUTER_NAME],
     steps = [#ibo_xbostep{
         domain = <<"star_destroyer">>,
         local = <<"marketing">>,

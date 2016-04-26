@@ -17,9 +17,9 @@
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
 
 %% API
--export([sent_to_test/1, sent_to_baddestination_test/1, sent_to_wrongdomain_test/1]).
+-export([sent_to_test/1, sent_to_baddestination_test/1, sent_to_wrongdomain_test/1, send_to_second_router_test/1]).
 
-all() -> [sent_to_test, sent_to_baddestination_test, sent_to_wrongdomain_test].
+all() -> [sent_to_test, sent_to_baddestination_test, sent_to_wrongdomain_test, send_to_second_router_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -41,12 +41,25 @@ end_per_suite(_Config) ->
     rpc:multicall(Nodes, application, stop, [mnesia]),
     ok = mnesia:delete_schema(Nodes).
 
+init_per_testcase(send_to_second_router_test, Config) ->
+    box_server:start_link(#{name =>?BOX_NAME}),
+    xbo_router:start_link(#{name => ?ROUTER2_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}),
+    error_server:start_link(#{name => ?ERROR_SERVER_NAME}),
+    Config;
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     box_server:start_link(#{name =>?BOX_NAME}),
     xbo_router:start_link(#{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}),
     error_server:start_link(#{name => ?ERROR_SERVER_NAME}),
     Config.
 
+end_per_testcase(send_to_second_router_test, _Config) ->
+    mnesia:clear_table(ibo_boxdata),
+    mnesia:clear_table(ibo_boxindex),
+    mnesia:clear_table(ibo_errordata),
+    box_server:stop(?BOX_NAME),
+    xbo_router:stop(?ROUTER2_NAME),
+    error_server:stop(?ERROR_SERVER_NAME),
+    ok;
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_boxdata),
     mnesia:clear_table(ibo_boxindex),
@@ -71,7 +84,7 @@ sent_to_test(_Config) ->
     XBOtemplate = XBO#ibo_xbo.template,
 
     % sent to box_server via router
-    ok = xbo_router:process_xbo(?ROUTER_NAME, XBO, 1, #ibo_xbostepdata{stepnr = 1}, ?BOX_NAME),
+    ok = xbo_router:process_xbo(XBO, 1, #ibo_xbostepdata{stepnr = 1}, ?BOX_NAME),
     ct_helper:wait(), % in order to wait for the xbo to get processed by the box_server
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
@@ -90,7 +103,7 @@ sent_to_test(_Config) ->
 sent_to_baddestination_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    {error, "Destination is not allowed"} = xbo_router:process_xbo(?ROUTER_NAME, ?XBO, 1, #ibo_xbostepdata{stepnr = 1}, <<"black_hole">>),
+    {error, "Destination is not allowed"} = xbo_router:process_xbo(?XBO, 1, #ibo_xbostepdata{stepnr = 1}, <<"black_hole">>),
     ct_helper:wait(),
 
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
@@ -101,9 +114,13 @@ sent_to_wrongdomain_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     0 = ct_helper:get_recordcount_in_table(ibo_errordata),
-    ok = xbo_router:process_xbo(?ROUTER_NAME, ?FAILXBO_WRONGDOMAIN, 1, #ibo_xbostepdata{stepnr = 1}, ?BOX_NAME),   % router does not wait anymore for a reply from the destination server, but sends an ok when the packet is received
+    ok = xbo_router:process_xbo(?FAILXBO_WRONGDOMAIN, 1, #ibo_xbostepdata{stepnr = 1}, ?BOX_NAME),   % router does not wait anymore for a reply from the destination server, but sends an ok when the packet is received
     ct_helper:wait(),
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     1 = ct_helper:get_recordcount_in_table(ibo_errordata),
+    ok.
+
+send_to_second_router_test(Config) ->
+    sent_to_test(Config),   % same test as in the first test, just that the second router is used (first one is offline)
     ok.
