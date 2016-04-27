@@ -35,7 +35,7 @@ end_per_testcase(iactor_config_start_test, Config) ->
     Config;
     %dets:delete_all_objects(watchdog_configuration);    % watchdog processes are already not running (because they should crash)
 end_per_testcase(_, Config) ->
-    ok = dets:delete_all_objects(watchdog_configuration),    % persistend configuration for the watchdog need to be deleted, otherwise one tests affects the next one
+    ok = file:delete(watchdog_configuration),    % persistend configuration for the watchdog need to be deleted, otherwise one tests affects the next one
     stop_watchdog_processes(Config).
 
 %%%===================================================================
@@ -80,7 +80,7 @@ iactor_restart_test(_Config) -> % when an iactor is stopped, it should be restar
     repo_server:stop(?REPO_NAME),
 
     ct_helper:waitms(1000),
-    true = g_is_registered(?REPO_NAME),
+    true = ct_helper:is_registered_global(?REPO_NAME),
     NewRepoPid = global:whereis_name(?REPO_NAME),
     true = RepoPid /= NewRepoPid,
     ok.
@@ -91,7 +91,7 @@ iactor_restart_test2(_Config) ->    % when an iactor is killed, it should be res
     exit(RepoPid, kill),
 
     ct_helper:wait(),
-    true = g_is_registered(?REPO_NAME),
+    true = ct_helper:is_registered_global(?REPO_NAME),
     NewRepoPid = global:whereis_name(?REPO_NAME),
     true = RepoPid /= NewRepoPid,
     ok.
@@ -105,7 +105,7 @@ iactor_restart_test3(_Config) ->    % when the watchdog dies, the pool has to be
     l_kill(watchdog_server),
 
     ct_helper:wait(1),
-    true = g_is_registered(?REPO_NAME),
+    true = ct_helper:is_registered_global(?REPO_NAME),
     ok.
 
 iactor_doublestart_test(Config) ->
@@ -120,25 +120,25 @@ iactor_doublestart_test(Config) ->
 
 iactor_config_test(Config)->    % repo-server needs to be restarted again after shutdown of all the watchdog processes
     ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
-    true = g_is_registered(?REPO_NAME),
+    true = ct_helper:is_registered_global(?REPO_NAME),
 
     C1 = stop_watchdog_processes(Config),
-    false = g_is_registered(?REPO_NAME),
+    false = ct_helper:is_registered_global(?REPO_NAME),
 
     _C2 = start_watchdog_processes(C1),
-    true = g_is_registered(?REPO_NAME),
+    true = ct_helper:is_registered_global(?REPO_NAME),
     ok.
 
 iactor_config_start_test(Config) -> % watchdog_server should crash when it tries to startup and an iactor can't be started because it's already started by someone else
-    true = l_is_registered(watchdog_server),
+    true = ct_helper:is_registered_local(watchdog_server),
     ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
     _C1 = stop_watchdog_processes(Config),
-    false = l_is_registered(watchdog_server),
+    false = ct_helper:is_registered_local(watchdog_server),
     repo_server:start_link(?REPO_ARGS),  % shouldn't be started directly, just for testing
     process_flag(trap_exit, true),
     {error, _} = watchdog_sup:start_link(), % whole watchdog-process should now crash when trying to start
     process_flag(trap_exit, false),
-    false = l_is_registered(watchdog_server),
+    false = ct_helper:is_registered_local(watchdog_server),
     repo_server:stop(?REPO_NAME),
 %%    true = dets:is_dets_file(watchdog_configuration),
 %%    {ok, _} = dets:open_file(watchdog_configuration),
@@ -148,21 +148,6 @@ iactor_config_start_test(Config) -> % watchdog_server should crash when it tries
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-g_is_registered(Name) ->
-    case global:whereis_name(Name) of
-        undefined ->
-            false;
-        _Pid ->
-            true
-    end.
-
-l_is_registered(Name) ->
-    case whereis(Name) of
-        undefined ->
-            false;
-        _Pid ->
-            true
-    end.
 
 l_kill(RegisteredName) ->
     Pid = whereis(RegisteredName),

@@ -15,7 +15,9 @@
 -record(state, {
     type :: undefined | list | start,
     ibo_user :: #ibo_user{} | undefined,
-    templates :: list(nonempty_string())
+    templates :: list(nonempty_string()),
+    repo_server_name :: binary(),
+    directory_server_name :: binary()
 }).
 
 %% API ---------------------------------------------------------------
@@ -29,7 +31,9 @@
 -export([json_post/2]).
 
 init(Req, Opts) ->
-    {cowboy_rest, Req, Opts}.
+    Repo = maps:get(repo, Opts),
+    Directory = maps:get(directory, Opts),
+    {cowboy_rest, Req, #state{repo_server_name = Repo, directory_server_name = Directory}}.
 
 %% Allowed Methods ---------------------------------------------------
 allowed_methods(Req, State) ->
@@ -39,7 +43,7 @@ allowed_methods(Req, State) ->
 is_authorized(Req, State) ->
     case cowboy_req:parse_header(<<"authorization">>, Req) of
         {basic, UserID, Password} ->
-            case directory_server:get_user_info(UserID,Password) of
+            case directory_server:get_user_info(State#state.directory_server_name, UserID,Password) of
                 User when is_tuple(User) andalso element(1,User) =:= ibo_user ->
                     {true, Req, #state{ibo_user = User}};
                 _ ->
@@ -52,10 +56,10 @@ is_authorized(Req, State) ->
 forbidden(Req, State) ->
     case cowboy_req:binding(repo_path, Req) of
         undefined ->    % = no additional path given
-            {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.ibo_user)}};
+            {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, State#state.ibo_user)}};
         TemplateName ->
             % TODO: only check if forbidden first, handle other errors later
-            case repo_server:start_template(State#state.ibo_user, TemplateName) of
+            case repo_server:start_template(State#state.repo_server_name, State#state.ibo_user, TemplateName) of
                 {error, _Message} ->
                     {true, Req, State#state{type = start}};
                 _Else ->

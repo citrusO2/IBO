@@ -4,9 +4,9 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 27. Apr 2016 14:35
+%%% Created : 27. Apr 2016 17:50
 %%%-------------------------------------------------------------------
--module(directory_sup).
+-module(web_sup).
 -author("Florian").
 
 -include("../helper/supervisor_macros.hrl").
@@ -26,5 +26,5 @@ start_link(Args) ->
 %%%===================================================================
 init(Args) ->
     SupFlags = ?FLAGS(one_for_all, 5, 10),
-    DirectoryServerChildSpec = ?CHILD(directory_server,worker, [Args]),
-    {ok, {SupFlags, [DirectoryServerChildSpec]}}.
+    WebServerChildSpec = ?CHILD(web_server,worker, [Args]),
+    {ok, {SupFlags, [WebServerChildSpec]}}.

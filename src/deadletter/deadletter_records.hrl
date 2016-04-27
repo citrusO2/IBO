@@ -13,11 +13,13 @@
 -ifndef(DEADLETTER_RECORDS_HRL).
 -define(DEADLETTER_RECORDS_HRL, 1).
 
--record(ibo_deadletterdata, {
-    destination :: binary(),
-    xbo :: #ibo_xbo{},
-    newstepdata :: #ibo_xbostepdata{},
-    newstep :: non_neg_integer()
-}).
+%% became obsolete because deadletter_data are stored in a dets-file
+
+%%-record(ibo_deadletterdata, {
+%%    destination :: binary(),
+%%    xbo :: #ibo_xbo{},
+%%    newstepdata :: #ibo_xbostepdata{},
+%%    newstep :: non_neg_integer()
+%%}).
 
 -endif. % DEADLETTER_RECORDS_HRL defined

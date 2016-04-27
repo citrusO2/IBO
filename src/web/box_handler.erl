@@ -18,7 +18,9 @@
     ibo_user :: #ibo_user{} | undefined,
     ibo_boxdetail :: any() | undefined,
     ibo_boxindices :: [#ibo_boxindex{}] | undefined,
-    xbo_id :: undefined | nonempty_string()
+    xbo_id :: undefined | nonempty_string(),
+    box_server_name :: binary(),
+    directory_server_name :: binary()
 }).
 
 %% API ---------------------------------------------------------------
@@ -32,7 +34,9 @@
 -export([json_post/2]).
 
 init(Req, Opts) ->
-    {cowboy_rest, Req, Opts}.
+    Box = maps:get(box, Opts),
+    Directory = maps:get(directory, Opts),
+    {cowboy_rest, Req, #state{box_server_name = Box, directory_server_name = Directory}}.
 
 %% Allowed Methods ---------------------------------------------------
 allowed_methods(Req, State) ->
@@ -42,7 +46,7 @@ allowed_methods(Req, State) ->
 is_authorized(Req, State) ->
     case cowboy_req:parse_header(<<"authorization">>, Req) of
         {basic, UserID, Password} ->
-            case directory_server:get_user_info(UserID, Password) of
+            case directory_server:get_user_info(State#state.directory_server_name, UserID, Password) of
                 User when is_tuple(User) andalso element(1, User) =:= ibo_user ->
                     {true, Req, #state{ibo_user = User}};
 %%                {error, Reason} ->
@@ -59,14 +63,14 @@ forbidden(Req, State) ->
     case cowboy_req:binding(box_path, Req) of
         undefined ->    % = no additional path given
             NewState = State#state{
-                ibo_boxindices = box_server:get_boxindices(State#state.ibo_user),
+                ibo_boxindices = box_server:get_boxindices(State#state.directory_server_name, State#state.ibo_user),
                 type = overview
             },
             {false, Req, NewState};
         XboID ->
             NewState = State#state{xbo_id = XboID},
 %%            io:format("XboID>>>~p~n", [XboID]),
-            case box_server:get_webinit(XboID) of
+            case box_server:get_webinit(State#state.box_server_name, XboID) of
                 {error, not_found} ->
                     cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"id not found\"}">>, Req),
                     {stop, Req, NewState};
@@ -114,7 +118,7 @@ json_post(Req, State) when State#state.type =:= detail ->
 
     case schema_validator:validate_data(Schema, Data) of
         {ok, ValidData} ->
-            case box_server:execute_xbo(State#state.xbo_id, ValidData) of
+            case box_server:execute_xbo(State#state.box_server_name, State#state.xbo_id, ValidData) of
                 {ok, xbo_send} ->
                     cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"xbo send\"}">>, Req);
                 {ok, xbo_end} ->

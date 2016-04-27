@@ -14,7 +14,8 @@
 
 -record(state, {
     type :: undefined | self | other,
-    ibo_user :: #ibo_user{} | undefined
+    ibo_user :: #ibo_user{} | undefined,
+    directory_server_name :: binary()
 }).
 
 %% API ---------------------------------------------------------------
@@ -25,13 +26,14 @@
 -export([to_json/2]).
 
 init(Req, Opts) ->
-    {cowboy_rest, Req, Opts}.
+    Directory = maps:get(directory, Opts),
+    {cowboy_rest, Req, #state{directory_server_name = Directory}}.
 
 %% Authentication ----------------------------------------------------
 is_authorized(Req, State) ->
     case cowboy_req:parse_header(<<"authorization">>, Req) of
         {basic, UserID, Password} ->
-            case directory_server:get_user_info(UserID,Password) of
+            case directory_server:get_user_info(State#state.directory_server_name, UserID,Password) of
                 User when is_tuple(User) andalso element(1,User) =:= ibo_user ->
                     {true, Req, #state{ibo_user = User}};
                 _ ->

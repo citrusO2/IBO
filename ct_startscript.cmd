@@ -1,1 +1,1 @@
-rebar clean compile && ct_run -noshell -pa "./ebin" "." "./deps/pbkdf2/ebin" "./deps/jsx/ebin"   -name test@Dev-PC -logdir "./logs" -env TEST_DIR "./test"  -dir test  2>&1
+rebar clean compile && ct_run -noshell -pa "./ebin" "." "./deps/pbkdf2/ebin" "./deps/jsx/ebin" "./deps/ranch/ebin" "./deps/cowlib/ebin" "./deps/cowboy/ebin"   -name test@Dev-PC -logdir "./logs" -env TEST_DIR "./test"  -dir test  2>&1

@@ -19,7 +19,7 @@
 -export([start/2, stop/1]).
 
 %% API ---------------------------------------------------------------
--export([install/0, install/1, start_dependencies/0, installtestdata/0]).
+-export([install/0, install/1, uninstall/1, start_dependencies/0, installtestdata/0]).
 
 install() ->
     mnesia:stop(),
@@ -49,18 +49,23 @@ install(Nodes) ->
         [{attributes, record_info(fields, ibo_repo_template)},
             {disc_copies, Nodes},
             {type, set}]),
-    mnesia:create_table(ibo_deadletterdata,
-        [{attributes, record_info(fields, ibo_deadletterdata)},
-            {disc_copies, Nodes},
-            {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]).
+
+uninstall(Nodes) ->
+    mnesia:delete_table(ibo_user),
+    mnesia:delete_table(ibo_group),
+    mnesia:delete_table(ibo_boxdata),
+    mnesia:delete_table(ibo_boxindex),
+    mnesia:delete_table(ibo_repo_template),
+    rpc:multicall(Nodes, application, stop, [mnesia]),
+    ok = mnesia:delete_schema(Nodes).
 
 start_dependencies() ->
     ok = application:start(crypto),
     ok = application:start(ranch),
     ok = application:start(cowlib),
     ok = application:start(cowboy),
-    application:set_env(mnesia, dir, "./ebin/mnesia"), % consider using configuration file
+    %application:set_env(mnesia, dir, "./ebin/mnesia"), % consider using configuration file
     ok = application:start(mnesia).
 
 installtestdata()->
@@ -88,10 +93,10 @@ start_web() ->
 %% ===================================================================
 start(_StartType, _StartArgs) ->
     mnesia:wait_for_tables([ibo_user],5000),
-    start_web(),
+    %start_web(),
     ibo_sup:start_link().
 
 stop(_State) ->
-    io:format("cowboy webserver stopping~n"),
-    cowboy:stop_listener(http),
+%%    io:format("cowboy webserver stopping~n"),
+%%    cowboy:stop_listener(http),
     ok.

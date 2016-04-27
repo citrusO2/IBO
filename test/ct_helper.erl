@@ -16,7 +16,9 @@
     create_table_for_record/3,
     read_transactional/2,
     get_recordcount_in_table/1,
-    wait/1,wait/0,waitms/1]).
+    wait/1,wait/0,waitms/1,
+    is_registered_global/1,
+    is_registered_local/1]).
 
 add_record_to_mnesia(Record) ->
     F = fun() ->
@@ -75,4 +77,20 @@ wait(Sec) ->
 waitms(Msecs) ->
     receive
     after (Msecs) -> ok
+    end.
+
+is_registered_global(Name) ->
+    case global:whereis_name(Name) of
+        undefined ->
+            false;
+        _Pid ->
+            true
+    end.
+
+is_registered_local(Name) ->
+    case whereis(Name) of
+        undefined ->
+            false;
+        _Pid ->
+            true
     end.
