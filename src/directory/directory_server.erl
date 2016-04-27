@@ -12,89 +12,108 @@
 -include("directory_records.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
+%% directory_server internal state -----------------------------------------
+-record(state, {
+    name :: binary()
+}).
+
 %% gen_server --------------------------------------------------------
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
-%% specs -------------------------------------------------------------
--spec get_user(nonempty_string()) -> #ibo_user{}.
--spec write_user(#ibo_user{}) -> ok | any().
-% TODO write more specs for API
-
 %% API ---------------------------------------------------------------
--export([start_link/0, stop/0,
-    get_user/1, write_user/1, search_user/1,
-    get_group/1, write_group/1, search_group/1,
-    create_user/2, update_user/2, get_user_info/2]).
+-export([start_link/1, stop/1,
+    get_user/2, search_user/2,
+    get_group/2, write_group/2, search_group/2,
+    create_user/3, update_user/3, get_user_info/3]).
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+%% starts a new global directory server with the given name as the global name
+-spec start_link(Args :: #{name => binary()}) ->  {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
+start_link(Args) ->
+    Name = maps:get(name, Args),
+    gen_server:start_link({global, Name}, ?MODULE, Args, []).
 
-stop() ->
-    gen_server:call(?MODULE, stop).
+%% stops a directory by its name
+-spec stop(Directory :: binary()) -> ok.
+stop(Directory) ->
+    gen_server:call({global, Directory}, stop).
 
-get_user(Username) ->
-    gen_server:call(?MODULE, {get_user, Username}).
+%% retrieves a user by the username
+-spec get_user(Directory :: binary(), Username :: binary()) -> #ibo_user{} | not_found | {error, term()}.
+get_user(Directory, Username) ->
+    gen_server:call({global, Directory}, {get_user, Username}).
 
-write_user(User) ->
-    gen_server:call(?MODULE, {write_user, User}).
+%% searches users by lastname, depending on the searchstring, empty string = all items
+-spec search_user(Directory :: binary(), SearchString :: binary()) -> [#ibo_user{}] | [] | {error, term()}.
+search_user(Directory, SearchString) ->
+    gen_server:call({global, Directory}, {search_user, SearchString}).
 
-search_user(SearchString) ->
-    gen_server:call(?MODULE, {search_user, SearchString}).
+%% retrieves a group by its name
+-spec get_group(Directory :: binary(), Groupname :: binary()) -> #ibo_group{} | not_found | {error, term()}.
+get_group(Directory, Groupname) ->
+    gen_server:call({global, Directory}, {get_group, Groupname}).
 
-get_group(Groupname) ->
-    gen_server:call(?MODULE, {get_group, Groupname}).
+%% writes a group to the db, if group already exists, it gets overwritten
+-spec write_group(Directory :: binary(), Group :: #ibo_group{}) -> ok | {error, term()}.
+write_group(Directory, Group) ->
+    gen_server:call({global, Directory}, {write_group, Group}).
 
-write_group(Group) ->
-    gen_server:call(?MODULE, {write_group, Group}).
+%% same as search_user, just for groups by groupname
+-spec search_group(Directory :: binary(), SearchString :: binary()) -> [#ibo_group{}] | [] | {error, term()}.
+search_group(Directory, SearchString) ->
+    gen_server:call({global, Directory}, {search_group, SearchString}).
 
-search_group(SearchString) ->
-    gen_server:call(?MODULE, {search_group, SearchString}).
-
+%%-------------------------------------
 % Higher API functions -- TODO: remove lower functions with higher ones
-create_user(User, Password) ->
-    gen_server:call(?MODULE, {create_user, User, Password}).
+%%-------------------------------------
 
-update_user(User, Password) ->
-    create_user(User, Password).
+%% creates a new user on the given directory and stores the password encrypted. Only creates a user if the username is not yet taken, otherwise there will be a password error or if the password is right, the user gets overwritten
+-spec create_user(Directory :: binary(), User :: #ibo_user{}, Password :: binary()) ->  ok | {error, term()}.
+create_user(Directory, User, Password) ->
+    gen_server:call({global, Directory}, {create_user, User, Password}).
 
-get_user_info(Username, Password) ->
-    gen_server:call(?MODULE, {get_user_info, Username, Password}).
+%% exactly like create user
+update_user(Directory, User, Password) ->
+    create_user(Directory, User, Password).
+
+%% retrieves a user by username and password, gives back an error when password is wrong or the username cannot be found. The Password gets removed from the result record
+-spec get_user_info(Directory :: binary(), Username :: #ibo_user{}, Password :: binary()) -> #ibo_user{} | {error, term()}.
+get_user_info(Directory, Username, Password) ->
+    gen_server:call({global, Directory}, {get_user_info, Username, Password}).
 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
-init([]) ->
+init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
-    io:format("~p starting~n", [?MODULE]),
-    {ok, 0}. % 0 = initial state
+    Name = maps:get(name, Args),
+    io:format("~p (~p) starting~n", [?MODULE, Name]),
+    {ok, #state{name = Name}}. % 0 = initial state
 
-handle_call({get_user, Username}, _From, N) ->
-    {reply, db:read_transactional(ibo_user, Username), N + 1};
-handle_call({write_user, User}, _From, N) ->
-    {reply, db:write_transactional(User), N + 1};
-handle_call({search_user, SearchString}, _From, N) ->
-    {reply, search_transactional(SearchString, ibo_user, 4), N + 1}; % 4 = lastname
-handle_call({get_group, Groupname}, _From, N) ->
-    {reply, db:read_transactional(ibo_group, Groupname), N + 1};
-handle_call({write_group, Group}, _From, N) ->
-    {reply, db:write_transactional(Group), N + 1};
-handle_call({search_group, SearchString}, _From, N) ->
-    {reply, search_transactional(SearchString, ibo_group, 2), N + 1}; % 2 = groupname
-handle_call({create_user, User, Password}, _From, N) ->
-    {reply, create_or_update_user(User, Password), N + 1};
-handle_call({get_user_info, Username, Password}, _From, N) ->
-    {reply, read_user_info(Username, Password), N + 1};
-handle_call(stop, _From, N) ->
-    {stop, normal, stopped, N}.
+handle_call({get_user, Username}, _From, S) ->
+    {reply, db:read_transactional(ibo_user, Username), S};
+handle_call({search_user, SearchString}, _From, S) ->
+    {reply, search_transactional(SearchString, ibo_user, 4), S}; % 4 = lastname
+handle_call({get_group, Groupname}, _From, S) ->
+    {reply, db:read_transactional(ibo_group, Groupname), S};
+handle_call({write_group, Group}, _From, S) ->
+    {reply, db:write_transactional(Group), S};
+handle_call({search_group, SearchString}, _From, S) ->
+    {reply, search_transactional(SearchString, ibo_group, 2), S}; % 2 = groupname
+handle_call({create_user, User, Password}, _From, S) ->
+    {reply, create_or_update_user(User, Password), S};
+handle_call({get_user_info, Username, Password}, _From, S) ->
+    {reply, read_user_info(Username, Password), S};
+handle_call(stop, _From, S) ->
+    {stop, normal, stopped, S}.
 
-handle_cast(_Msg, N) -> {noreply, N}.
-handle_info(_Info, N) -> {noreply, N}.
-terminate(_Reason, _N) ->
+handle_cast(_Msg, S) -> {noreply, S}.
+handle_info(_Info, S) -> {noreply, S}.
+terminate(_Reason, _S) ->
     io:format("~p stopping~n", [?MODULE]),
     ok.
-code_change(_OldVsn, N, _Extra) -> {ok, N}.
+code_change(_OldVsn, S, _Extra) -> {ok, S}.
 
 %%%===================================================================
 %%% Internal functions
@@ -166,6 +185,11 @@ read_user_info(Username, Password) ->
 %%% Helper functions
 %%%===================================================================
 -spec is_substring_in_string(nonempty_string(), nonempty_string()) -> boolean().
+is_substring_in_string(Source, Find) when is_binary(Source), is_binary(Find)->
+    case binary:match(Source, Find) of
+        nomatch -> false;
+        _Matched -> true
+    end;
 is_substring_in_string(Source, Find) ->
     string:str(Source, Find) >= 1. % true if found, false if not found
 

@@ -10,16 +10,17 @@
 -author("Florian").
 
 -include("../src/directory/directory_records.hrl").
--define(USER, #ibo_user{username = "ff", firstname = "Fabian", lastname = "Froelich"}).
--define(NEWUSER, #ibo_user{username = "dd", firstname = "Doris", lastname = "Dührwald", groups = ["marketing"]}).
--define(GROUP, #ibo_group{groupname = "ACME_Corporation", groupdescription = "This should be the root group"}).
--define(NEWGROUP, #ibo_group{groupname = "Marketing", groupdescription = "Group for the Unit Marketing", parent = "ACME_Corporation"}).
+-define(USER, #ibo_user{username = <<"ff">>, firstname = <<"Fabian">>, lastname = <<"Froelich">>}).
+-define(NEWUSER, #ibo_user{username = <<"dd">>, firstname = <<"Doris">>, lastname = <<"Dührwald">>, groups = [<<"marketing">>]}).
+-define(GROUP, #ibo_group{groupname = <<"ACME_Corporation">>, groupdescription = <<"This should be the root group">>}).
+-define(NEWGROUP, #ibo_group{groupname = <<"Marketing">>, groupdescription = <<"Group for the Unit Marketing">>, parent = <<"ACME_Corporation">>}).
+-define(DIRECTORY_NAME, <<"DIRECTORY1">>).
+-define(DIRECTORY_ARGS, #{name => ?DIRECTORY_NAME}).
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
 -export([get_user_test/1, get_user_fail_test/1,
-    write_user_test/1, write_user_fail_test/1,
     search_user_test/1,
     get_group_test/1, get_group_fail_test/1,
     write_group_test/1, write_group_fail_test/1,
@@ -27,7 +28,6 @@
     create_user_test/1, get_user_info/1]).
 
 all() -> [get_user_test, get_user_fail_test,
-    write_user_test, write_user_fail_test,
     search_user_test,
     get_group_test, get_group_fail_test,
     write_group_test, write_group_fail_test,
@@ -55,7 +55,7 @@ end_per_suite(_Config) ->
     mnesia:delete_schema(Nodes).
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
-    directory_server:start_link(),
+    directory_server:start_link(?DIRECTORY_ARGS),
     ct_helper:add_record_to_mnesia(?USER),
     ct_helper:add_record_to_mnesia(?GROUP),
     Config.
@@ -63,54 +63,41 @@ init_per_testcase(_, Config) -> % first argument = name of the testcase as atom,
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_user),
     mnesia:clear_table(ibo_group),
-    directory_server:stop().
+    directory_server:stop(?DIRECTORY_NAME).
 
 %%%===================================================================
 %%% User Tests
 %%%===================================================================
 get_user_test(_Config) ->
     Record1 = ?USER,
-    Record2 = directory_server:get_user(Record1#ibo_user.username),
+    Record2 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
     ct_helper:print_var("Record1", Record1),
     ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
     ok.
 
 get_user_fail_test(_Config) ->
-    Out = directory_server:get_user("MiauMiau"),
+    Out = directory_server:get_user(?DIRECTORY_NAME, <<"MiauMiau">>),
     ct_helper:print_var("Out", Out),
     true = Out =:= not_found,
     ok.
 
-write_user_test(_Config) ->
-    Record1 = ?NEWUSER,
-    ok = directory_server:write_user(Record1),
-    Record2 = directory_server:get_user(Record1#ibo_user.username),
-    true = Record1 =:= Record2,
-    ok.
-
-write_user_fail_test(_Config) ->
-    Out = directory_server:write_user({"Crazy", "NotUsed", "Wrong Record"}),
-    ct_helper:print_var("Out", Out),
-    {error, _} = Out,
-    ok.
-
 search_user_test(_Config) ->
     Record1 = ?USER,
-    [Record2] = directory_server:search_user("Froe"),
-    [] = directory_server:search_user("Dühr"),
+    [Record2] = directory_server:search_user(?DIRECTORY_NAME, <<"Froe">>),
+    [] = directory_server:search_user(?DIRECTORY_NAME, <<"Dühr">>),
     ct_helper:print_var("Record1", Record1),
     ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
 
     ct_helper:add_record_to_mnesia(?NEWUSER),
-    [Record3] = directory_server:search_user("Dühr"),
+    [Record3] = directory_server:search_user(?DIRECTORY_NAME, <<"Dühr">>),
     true = Record3 =:= ?NEWUSER,
-    2 = length(directory_server:search_user("")),
-    2 = length(directory_server:search_user(<<"">>)),
+    2 = length(directory_server:search_user(?DIRECTORY_NAME, "")),
+    2 = length(directory_server:search_user(?DIRECTORY_NAME, <<"">>)),
 
     ct_helper:remove_record_from_mnesia(Record1),
-    [Record3] = directory_server:search_user("r"),
+    [Record3] = directory_server:search_user(?DIRECTORY_NAME, <<"r">>),
     ok.
 
 %%%===================================================================
@@ -118,46 +105,46 @@ search_user_test(_Config) ->
 %%%===================================================================
 get_group_test(_Config) ->
     Record1 = ?GROUP,
-    Record2 = directory_server:get_group(Record1#ibo_group.groupname),
+    Record2 = directory_server:get_group(?DIRECTORY_NAME, Record1#ibo_group.groupname),
     ct_helper:print_var("Record1", Record1),
     ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
     ok.
 
 get_group_fail_test(_Config) ->
-    Out = directory_server:get_group("MiauMiau"),
+    Out = directory_server:get_group(?DIRECTORY_NAME, <<"MiauMiau">>),
     ct_helper:print_var("Out", Out),
     true = Out =:= not_found,
     ok.
 
 write_group_test(_Config) ->
     Record1 = ?NEWGROUP,
-    ok = directory_server:write_group(Record1),
-    Record2 = directory_server:get_group(Record1#ibo_group.groupname),
+    ok = directory_server:write_group(?DIRECTORY_NAME, Record1),
+    Record2 = directory_server:get_group(?DIRECTORY_NAME, Record1#ibo_group.groupname),
     true = Record1 =:= Record2,
     ok.
 
 write_group_fail_test(_Config) ->
-    Out = directory_server:write_group({"Crazy", "NotUsed", "Wrong Record"}),
+    Out = directory_server:write_group(?DIRECTORY_NAME, {<<"Crazy">>, <<"NotUsed">>, <<"Wrong Record">>}),
     ct_helper:print_var("Out", Out),
     {error, _} = Out,
     ok.
 
 search_group_test(_Config) ->
     Record1 = ?GROUP,
-    [Record2] = directory_server:search_group("ACME"),
-    [] = directory_server:search_group("Mark"),
+    [Record2] = directory_server:search_group(?DIRECTORY_NAME, <<"ACME">>),
+    [] = directory_server:search_group(?DIRECTORY_NAME, <<"Mark">>),
     ct_helper:print_var("Record1", Record1),
     ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
 
     ct_helper:add_record_to_mnesia(?NEWGROUP),
-    [Record3] = directory_server:search_group("Mark"),
+    [Record3] = directory_server:search_group(?DIRECTORY_NAME, <<"Mark">>),
     true = Record3 =:= ?NEWGROUP,
-    2 = length(directory_server:search_group("")),
+    2 = length(directory_server:search_group(?DIRECTORY_NAME, <<"">>)),
 
     ct_helper:remove_record_from_mnesia(Record1),
-    [Record3] = directory_server:search_group("r"),
+    [Record3] = directory_server:search_group(?DIRECTORY_NAME, <<"r">>),
     ok.
 
 %%%===================================================================
@@ -167,27 +154,27 @@ create_user_test(_Config) ->
     Password = <<"MySecretPassword">>,
     Record1 = ?NEWUSER,
     ct_helper:print_var("Record1", Record1),
-    ok = directory_server:create_user(Record1, Password),
+    ok = directory_server:create_user(?DIRECTORY_NAME, Record1, Password),
 
-    {ibo_user,"dd","Doris",_,_,_} = Record2 = directory_server:get_user(Record1#ibo_user.username),
+    {ibo_user,<<"dd">>,<<"Doris">>,_,_,_} = Record2 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
     ct_helper:print_var("Record2", Record2),
 
-    UpdatedUser = Record2#ibo_user{firstname = "Daniela"},
+    UpdatedUser = Record2#ibo_user{firstname = <<"Daniela">>},
     ct_helper:print_var("UpdatedUser", UpdatedUser),
-    directory_server:update_user(UpdatedUser, Password),
+    directory_server:update_user(?DIRECTORY_NAME, UpdatedUser, Password),
 
-    {ibo_user,"dd","Daniela",_,_,_} = Record3 = directory_server:get_user(Record1#ibo_user.username),
+    {ibo_user,<<"dd">>,<<"Daniela">>,_,_,_} = Record3 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
     ct_helper:print_var("Record3", Record3),
 
-    UpdatedUser2 = Record3#ibo_user{firstname = "Darsir"},
-    {error,"Incorrect password"} = directory_server:update_user(UpdatedUser2, <<"Miau">>),
+    UpdatedUser2 = Record3#ibo_user{firstname = <<"Darsir">>},
+    {error,"Incorrect password"} = directory_server:update_user(?DIRECTORY_NAME, UpdatedUser2, <<"Miau">>),
     ok.
 
 get_user_info(_Config) ->
     Password = <<"MySecretPassword">>,
     Record1 = ?NEWUSER,
-    ok = directory_server:create_user(Record1, Password),
-    Response1 = directory_server:get_user_info(Record1#ibo_user.username, Password),
+    ok = directory_server:create_user(?DIRECTORY_NAME, Record1, Password),
+    Response1 = directory_server:get_user_info(?DIRECTORY_NAME, Record1#ibo_user.username, Password),
     ct_helper:print_var("Response1",Response1),
     Response1 = Record1,
-    {error, "Wrong password"} = directory_server:get_user_info(Record1#ibo_user.username, <<"Plubla">>).
+    {error, "Wrong password"} = directory_server:get_user_info(?DIRECTORY_NAME, Record1#ibo_user.username, <<"Plubla">>).
