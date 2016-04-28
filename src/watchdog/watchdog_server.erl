@@ -21,7 +21,7 @@
     terminate/2, code_change/3]).
 
 %% API
--export([start_link/0, start_iactor/2, stop_iactor/1]).
+-export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -32,11 +32,17 @@ start_link() ->
                   (IactorType :: atom(), Name :: binary()) -> ok | {error, term()}.
 start_iactor(IactorType, Args) when is_map(Args) ->
     gen_server:call(?MODULE, {start_iactor, IactorType, Args});
-start_iactor(IactorType, Name) when is_binary(Name) ->
+start_iactor(IactorType, Name) when is_binary(Name) -> % when no special ARGS are needed, the name can be given as a binary instead
     start_iactor(IactorType, #{name => Name}).
 
+%% stops an iactor by its name
+-spec stop_iactor(Name :: binary()) -> ok.
 stop_iactor(Name) ->
     gen_server:call(?MODULE, {stop_iactor, Name}).
+
+-spec get_iactors() -> [{Name :: binary(), IactorType :: atom(), Args :: map()}].
+get_iactors() ->
+    gen_server:call(?MODULE, get_iactors).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -54,6 +60,8 @@ init([]) ->
         [Iactor|AccIn] end,[], S#state.filename),
     {ok, S#state{iactors = Iactors}}.
 
+handle_call(get_iactors, _From, S) ->
+    {reply, S#state.iactors,S};
 handle_call({start_iactor, IactorType, Args}, _From, S) ->
     Name = maps:get(name, Args),
     case lists:keymember(Name, 1, S#state.iactors) of

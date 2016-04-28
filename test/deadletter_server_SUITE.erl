@@ -15,10 +15,10 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([start_deadletter_test/1, send_to_box_deadrouter_test/1, send_to_box_deadrouter_restart_test/1, send_to_deadbox_test/1, send_to_deadbox_strict_test/1]).
+-export([start_deadletter_test/1, send_to_box_deadrouter_test/1, send_to_box_deadrouter_restart_test/1, send_to_deadbox_test/1, send_to_deadbox_strict_test/1, shutdown_restart_test/1]).
 
 %% API
-all() -> [start_deadletter_test, send_to_box_deadrouter_test, send_to_box_deadrouter_restart_test, send_to_deadbox_test,send_to_deadbox_strict_test].
+all() -> [start_deadletter_test, send_to_box_deadrouter_test, send_to_box_deadrouter_restart_test, send_to_deadbox_test,send_to_deadbox_strict_test, shutdown_restart_test].
 
 init_per_suite(Config) ->
     Nodes = [node()],
@@ -46,7 +46,7 @@ init_per_testcase(_, Config) ->
     start_router(?ROUTER_NAME),
     start_deadletter_processes(Config).
 
-end_per_testcase(send_to_box_deadrouter_restart_test, _Config) ->
+end_per_testcase(Case, _Config) when Case =:= send_to_box_deadrouter_restart_test ; Case =:= shutdown_restart_test->
     box_server:stop(?BOX_NAME),
     xbo_router:stop(?ROUTER_NAME),
     delete_boxstore();
@@ -120,6 +120,22 @@ send_to_deadbox_strict_test(_Config) ->
     ct_helper:waitms(1000),
     check_box_notempty(),
     0 = deadletter_server:get_size(),
+    ok.
+
+shutdown_restart_test(Config) -> % deadletter server should send its content to the iactors after restarting
+    XBO = ?NEWXBO2, %XBO is adressed to Router2, but Router 2 is not yet started
+    0 = deadletter_server:get_size(),
+    ok = xbo_router:process_xbo(XBO, 1, ?BOX_NAME),
+    1 = deadletter_server:get_size(),
+
+    C2 = stop_deadletter_processes(Config),
+    ct_helper:wait(),
+    C3 = start_deadletter_processes(C2),
+    start_router(?ROUTER2_NAME),
+    ct_helper:waitms(1000), % tickrate of deadletter is 500ms, wait till tick and global got updated and the deadletter server started a worker to send the xbo on its way again
+    check_box_notempty(),
+    0 = deadletter_server:get_size(),
+    _C4 = stop_deadletter_processes(C3),
     ok.
 
 %%%===================================================================

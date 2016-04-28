@@ -12,15 +12,15 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([start_iactor_test/1, iactor_restart_test/1, iactor_restart_test2/1, iactor_restart_test3/1, iactor_doublestart_test/1, iactor_config_test/1, iactor_config_start_test/1]).
+-export([start_iactor_test/1, iactor_restart_test/1, iactor_restart_test2/1, iactor_restart_test3/1, iactor_doublestart_test/1, iactor_config_test/1, iactor_config_start_test/1, get_iactors_test/1, start_iactor_simple_test/1]).
 
 -define(REPO_NAME, <<"REPO1">>).
 -define(ROUTER_NAME, <<"ROUTER1">>).
 -define(ERROR_SERVER_NAME, <<"ERRORSRV1">>).
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [<<"my_error_server">>], n => 1 }).
+-define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_SERVER_NAME], n => 1 }).
 -define(ERROR_ARGS, #{name => ?ERROR_SERVER_NAME}).
 
-all() -> [start_iactor_test, iactor_restart_test, iactor_restart_test2, iactor_restart_test3, iactor_doublestart_test, iactor_config_test, iactor_config_start_test ].
+all() -> [start_iactor_test, iactor_restart_test, iactor_restart_test2, iactor_restart_test3, iactor_doublestart_test, iactor_config_test, iactor_config_start_test, get_iactors_test, start_iactor_simple_test].
 
 init_per_suite(Config) ->
     Config.
@@ -31,12 +31,11 @@ end_per_suite(_Config) ->
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
     start_watchdog_processes(Config).
 
-end_per_testcase(iactor_config_start_test, Config) ->
-    Config;
-    %dets:delete_all_objects(watchdog_configuration);    % watchdog processes are already not running (because they should crash)
+end_per_testcase(iactor_config_start_test, _Config) ->
+    ok = file:delete(watchdog_configuration); % watchdog processes are already not running (because they should crash)
 end_per_testcase(_, Config) ->
-    ok = file:delete(watchdog_configuration),    % persistend configuration for the watchdog need to be deleted, otherwise one tests affects the next one
-    stop_watchdog_processes(Config).
+    stop_watchdog_processes(Config),
+    ok = file:delete(watchdog_configuration).    % persistend configuration for the watchdog need to be deleted, otherwise one tests affects the next one
 
 %%%===================================================================
 %%% User Tests
@@ -140,9 +139,20 @@ iactor_config_start_test(Config) -> % watchdog_server should crash when it tries
     process_flag(trap_exit, false),
     false = ct_helper:is_registered_local(watchdog_server),
     repo_server:stop(?REPO_NAME),
-%%    true = dets:is_dets_file(watchdog_configuration),
-%%    {ok, _} = dets:open_file(watchdog_configuration),
-%%    dets:delete_all_objects(watchdog_configuration),
+    ok.
+
+get_iactors_test(_Config) ->
+    ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
+    ok = watchdog_server:start_iactor(error_sup, ?ERROR_ARGS),
+    Iactors = watchdog_server:get_iactors(),
+    true = lists:member( {?REPO_NAME, repo_sup, ?REPO_ARGS}, Iactors),
+    true = lists:member( {?ERROR_SERVER_NAME, error_sup, ?ERROR_ARGS}, Iactors),
+    ok.
+
+start_iactor_simple_test(_Config) -> % if the ARGS only consists of a map with the name of the iactor, then instead of a map a binary can be given
+    ok = watchdog_server:start_iactor(error_sup, ?ERROR_SERVER_NAME),
+    [Iactor] = watchdog_server:get_iactors(),
+    Iactor = {?ERROR_SERVER_NAME, error_sup, ?ERROR_ARGS},
     ok.
 
 %%%===================================================================

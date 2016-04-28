@@ -20,6 +20,7 @@
 -define(DIRECTORY_ARGS, #{name=>?DIRECTORY_NAME}).
 -define(ERROR_ARGS, #{name=>?ERROR_NAME}).
 -define(WEB_ARGS, #{name=>?WEB_NAME, directory=>?DIRECTORY_NAME, box => ?BOX_NAME, repo => ?REPO_NAME}).
+-define(ROUTER_ARGS, #{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}).
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
@@ -72,11 +73,11 @@ start_application_aftershutdown_test(_Config) ->
 
 start_complete_application_test(_Config) ->
     % TODO: add box to test
-    % TODO: add repo to test
     ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
     ok = watchdog_server:start_iactor(directory_sup, ?DIRECTORY_ARGS),
     ok = watchdog_server:start_iactor(error_sup, ?ERROR_ARGS),
     ok = watchdog_server:start_iactor(web_sup, ?WEB_ARGS),
+    ok = watchdog_server:start_iactor(xbo_router_sup, ?ROUTER_ARGS),
     ok.
 
 %%%===================================================================
