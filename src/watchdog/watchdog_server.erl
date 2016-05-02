@@ -12,7 +12,9 @@
 %% watchdog_server internal state ----------------------------------------
 -record(state, {
     iactors :: list( {binary(), atom(), Args :: term() } )  ,   % list of actors to start at the beginning with their initialisation values, 1. element = global name, 2. element iactor type, 3. element Args
-    filename = watchdog_configuration :: atom()
+    nodes :: list(node()),
+    filename = watchdog_configuration :: atom(),
+    tickrate = 1000*10 :: non_neg_integer()
 }).
 
 %% gen_server --------------------------------------------------------
@@ -21,7 +23,7 @@
     terminate/2, code_change/3]).
 
 %% API
--export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0]).
+-export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0, connect/1, disconnect/1, connection_status/0]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -44,6 +46,24 @@ stop_iactor(Name) ->
 get_iactors() ->
     gen_server:call(?MODULE, get_iactors).
 
+%% connects this node to the given node, the configuration is written to the disc
+-spec connect(Node :: node()) -> boolean() | ignored | already_running.
+connect(Node) ->
+    gen_server:call(?MODULE, {connect, Node}).
+
+%% disconnects this node to the given node
+-spec disconnect(Node :: node()) -> boolean() | ignored.
+disconnect(Node) ->
+    gen_server:call(?MODULE, {disconnect, Node}).
+
+%% displays the current connections to other nodes
+%% connected = active connections which are monitored and reconnected in case of a disconnect
+%% reconnecting = disconnected nodes which are constantly tried to reconnect again
+%% unmonitored = connected nodes, which are not reconnected by the watchdog when the connection dies
+-spec connection_status() -> #{connected => [node()], reconnecting => [node()], unmonitored => [node()]}.
+connection_status() ->
+    gen_server:call(?MODULE, connection_status).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -54,11 +74,9 @@ init([]) ->
 
     % open settings from disk or create new settings on disk & start stored actors
     {ok, _} = dets:open_file(S#state.filename, []),
-    Iactors = dets:foldl(fun({Name, IactorType, Args} = Iactor, AccIn) ->
-        check_not_globally_registered(Name,watchdog_configuration_panic),   % configuration error, there shouldn't be another node with the same global iactors
-        ok = add_iactor_to_supervisor(IactorType,Args),
-        [Iactor|AccIn] end,[], S#state.filename),
-    {ok, S#state{iactors = Iactors}}.
+    {Iactors, Nodes} = get_actors_and_nodes(S#state.filename),
+    {ok, _} = timer:send_interval(S#state.tickrate, tick),
+    {ok, S#state{iactors = Iactors, nodes = Nodes}}.
 
 handle_call(get_iactors, _From, S) ->
     {reply, S#state.iactors,S};
@@ -72,7 +90,7 @@ handle_call({start_iactor, IactorType, Args}, _From, S) ->
                 undefined ->
                     try add_iactor_to_supervisor(IactorType, Args) of
                         ok ->
-                            ok = dets:insert(S#state.filename,{Name, IactorType, Args}),
+                            ok = dets:insert(S#state.filename,{Name, IactorType, Args, os:timestamp()}),
                             NewState = S#state{iactors = [{Name, IactorType,Args}|S#state.iactors]},
                             {reply, ok, NewState}
                     catch
@@ -88,10 +106,41 @@ handle_call({stop_iactor, Name}, _From, S) ->
     ok = dets:delete(S#state.filename, Name),
     NewState = S#state{iactors = lists:keydelete(Name, 1, S#state.iactors)},
     {reply, ok, NewState};
+handle_call({connect, Node}, _From, S = #state{filename = Filename, nodes = Nodes}) ->
+    case lists:member(Node, Nodes) of
+        true -> {reply, already_running, S};
+        false ->
+            case net_kernel:connect(Node) of
+                true ->
+                    ok = dets:insert(Filename, {Node, os:timestamp()}),
+                    {reply, true, S#state{nodes = [Node|Nodes]}};
+                false -> {reply, false, S};
+                ignored -> {reply, ignored, S}
+            end
+    end;
+handle_call({disconnect, Node}, _From, S = #state{filename = Filename, nodes = Nodes}) ->
+    case erlang:disconnect_node(Node) of
+        true ->
+            ok = dets:delete(Filename, Node),
+            {reply, true, S#state{nodes = lists:delete(Node, Nodes)}};
+        false -> {reply, false, S};
+        ignored -> {reply, ignored, S}
+    end;
+handle_call(connection_status, _From, S = #state{nodes = Nodes}) ->
+    Disconnected = get_disconnected_nodes(Nodes),
+    Connected = lists:subtract(Nodes, Disconnected),
+    Unmonitored = lists:subtract(erlang:nodes(visible), Connected),
+
+    {reply, #{connected => Connected, reconnecting => Disconnected, unmonitored => Unmonitored}, S};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
 handle_cast(_Msg, State) -> {noreply, State}.
+handle_info(tick, S = #state{nodes = Nodes}) ->
+    % try to connect to all unconnected nodes
+    InactiveNodes = get_disconnected_nodes(Nodes),
+    lists:foreach(fun(Node) -> net_kernel:connect(Node) end, InactiveNodes),
+    {noreply,S};
 handle_info(_Info, N) -> {noreply, N}.
 terminate(_Reason, S) ->
     io:format("~p stopping~n", [?MODULE]),
@@ -109,6 +158,20 @@ check_not_globally_registered(Name, IfErrorReason) ->
         _Pid ->
             error(IfErrorReason)
     end.
+
+% retrieve actors and nodes from the configuration file
+get_actors_and_nodes(Filename) ->
+    dets:foldl(fun(Obj, Acc) -> get_actors_and_nodes(Obj, Acc) end,{[],[]}, Filename).  % own fun because get_actors_and_nodes/2 would need an export
+
+get_actors_and_nodes({Name, IactorType, Args, _Timestamp}, {Actors, Nodes} = _AccIn) ->
+    check_not_globally_registered(Name,watchdog_configuration_panic),   % configuration error, there shouldn't be another node with the same global iactors
+    ok = add_iactor_to_supervisor(IactorType,Args),
+    {[{Name, IactorType, Args}|Actors], Nodes};
+get_actors_and_nodes({Node, _Timestamp}, {Actors, Nodes} = _AccIn) ->
+    {Actors, [Node|Nodes]}.
+
+get_disconnected_nodes(Nodes) ->
+    lists:subtract(Nodes, erlang:nodes(visible)).
 
 %%%===================================================================
 %%% Dynamic IBO actor adding / removing

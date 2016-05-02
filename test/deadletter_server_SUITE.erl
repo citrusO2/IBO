@@ -113,6 +113,7 @@ send_to_deadbox_strict_test(_Config) ->
     {error, "cannot reach destination"} = xbo_router:super_strict_process_xbo(XBO, 1, ?BOX_NAME),
     0 = deadletter_server:get_size(),
     ok = xbo_router:strict_process_xbo(XBO, 1, ?BOX_NAME),  % normal and strict should work, as only superstrict waits till the destination is reached as well
+    ct_helper:wait(),
     1 = deadletter_server:get_size(),
     check_box_empty(),
 

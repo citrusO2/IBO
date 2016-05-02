@@ -43,7 +43,7 @@ init_per_testcase(_, Config) ->
     Config.
 
 end_per_testcase(start_application_test, _Config) ->
-    application:stop(ibo),
+    ok = application:stop(ibo),
     ok;
 end_per_testcase(_, _Config) ->
     application:stop(ibo),
@@ -72,12 +72,12 @@ start_application_aftershutdown_test(_Config) ->
     ok.
 
 start_complete_application_test(_Config) ->
-    % TODO: add box to test
     ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
     ok = watchdog_server:start_iactor(directory_sup, ?DIRECTORY_ARGS),
     ok = watchdog_server:start_iactor(error_sup, ?ERROR_ARGS),
     ok = watchdog_server:start_iactor(web_sup, ?WEB_ARGS),
     ok = watchdog_server:start_iactor(xbo_router_sup, ?ROUTER_ARGS),
+    ok = watchdog_server:start_iactor(box_sup, ?BOX_NAME),
     ok.
 
 %%%===================================================================
