@@ -19,7 +19,7 @@
 -export([start/2, stop/1]).
 
 %% API ---------------------------------------------------------------
--export([install/0, install/1, uninstall/1, start_dependencies/0, installtestdata/0]).
+-export([install/0, install/1, uninstall/1, start_dependencies/0, stop_dependencies/0, installtestdata/0]).
 
 install() ->
     mnesia:stop(),
@@ -51,6 +51,7 @@ install(Nodes) ->
             {type, set}]),
     rpc:multicall(Nodes, application, stop, [mnesia]).
 
+
 uninstall(Nodes) ->
     mnesia:delete_table(ibo_user),
     mnesia:delete_table(ibo_group),
@@ -68,25 +69,33 @@ start_dependencies() ->
     %application:set_env(mnesia, dir, "./ebin/mnesia"), % consider using configuration file
     ok = application:start(mnesia).
 
+stop_dependencies() ->
+    application:stop(mnesia),
+    application:stop(cowboy),
+    application:stop(cowlib),
+    application:stop(ranch),
+    application:stop(crypto),
+    ok.
+
 installtestdata()->
     repo_exampletemplates:install(),
     directory_exampleusers:install(),
     ok.
 
-start_web() ->
-    io:format("cowboy webserver starting~n"),
-    Dispatch = cowboy_router:compile([
-        {'_', [
-            {"/", cowboy_static, {file, "./src/webclient/index.html"}},
-            {"/api/box/[:box_path]", box_handler, []},
-            {"/api/directory/[:user_path]", directory_handler, []},
-            {"/api/repo/[:repo_path]", repo_handler, []},
-            {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
-        ]}
-    ]),
-    {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
-        [{env, [{dispatch, Dispatch}]}]
-    ).
+%%start_web() ->
+%%    io:format("cowboy webserver starting~n"),
+%%    Dispatch = cowboy_router:compile([
+%%        {'_', [
+%%            {"/", cowboy_static, {file, "./src/webclient/index.html"}},
+%%            {"/api/box/[:box_path]", box_handler, []},
+%%            {"/api/directory/[:user_path]", directory_handler, []},
+%%            {"/api/repo/[:repo_path]", repo_handler, []},
+%%            {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
+%%        ]}
+%%    ]),
+%%    {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
+%%        [{env, [{dispatch, Dispatch}]}]
+%%    ).
 
 %% ===================================================================
 %% Application callbacks

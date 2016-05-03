@@ -36,7 +36,8 @@ init_per_suite(Config) ->
     Config.
 
 end_per_suite(_Config) ->
-    ibo_app:uninstall([node()]).
+    ibo_app:uninstall([node()]),
+    ibo_app:stop_dependencies().
 
 init_per_testcase(_, Config) ->
     ok = application:start(ibo),

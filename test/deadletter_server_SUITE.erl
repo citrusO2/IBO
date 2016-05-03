@@ -99,6 +99,7 @@ send_to_deadbox_test(_Config) ->
     {error, "cannot reach destination"} = xbo_router:super_strict_process_xbo(XBO, 1, ?BOX_NAME),
     0 = deadletter_server:get_size(),
     ok = xbo_router:process_xbo(XBO, 1, ?BOX_NAME),
+    ct_helper:wait(),
     1 = deadletter_server:get_size(),
     check_box_empty(),
 
@@ -127,6 +128,7 @@ shutdown_restart_test(Config) -> % deadletter server should send its content to 
     XBO = ?NEWXBO2, %XBO is adressed to Router2, but Router 2 is not yet started
     0 = deadletter_server:get_size(),
     ok = xbo_router:process_xbo(XBO, 1, ?BOX_NAME),
+    ct_helper:wait(),
     1 = deadletter_server:get_size(),
 
     C2 = stop_deadletter_processes(Config),
