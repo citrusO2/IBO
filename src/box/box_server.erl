@@ -33,7 +33,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/1, process_xbo/3, get_boxindices/2, get_webinit/2, execute_xbo/3, xbo_childprocess/3]).
+-export([start_link/1, stop/1, process_xbo/3, get_boxindices/2, get_webinit/2, execute_xbo/3, xbo_childprocess/3, xlib_info/0]).
 
 %% starts a new global box server with the given name as the global name
 -spec start_link(Args :: #{name => binary()} ) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -69,6 +69,10 @@ get_boxindices(Box, User) when is_record(User, ibo_user) ->
 get_webinit(Box, XBOid) ->   % first ibo_xboline in ibo_xbostep to initialize the steps for the web-access
     gen_server:call({global, Box}, {get_webinit, XBOid}).
 
+%% information which libraries can be used by the iactor and which library is used for initialisation.
+xlib_info() ->
+    #{init => xlib_box, libraries => [xlib_basic, xlib_box]}.
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -79,13 +83,17 @@ init(Args) ->
     {ok, #state{domain = Name}}. % initial state
 
 handle_call({process_xbo, XBO, StepNr}, _From, State) ->
-    try check_xbo(XBO, StepNr, State) of
+    case xlib:check_xbo(XBO, StepNr, State#state.domain, xlib_info()) of
         ok ->
-            {reply, store_xbo(XBO, StepNr), State}
-    catch
-        _:Error ->
-            io:format("error processing xbo, check_xbo failed: ~p~n", [Error]),
-            {reply, {error,{check_xbo,Error}}, State}
+            case internal_check_xbo(XBO, StepNr) of
+                ok -> {reply, store_xbo(XBO, StepNr), State};
+                {error, ErrorReason} ->
+                    io:format("error processing xbo, internal_check_xbo failed: ~p~n", [ErrorReason]),
+                    {reply, {error,{check_xbo,ErrorReason}}, State}
+            end;
+        {error, ErrorReason} ->
+            io:format("error processing xbo, check_xbo failed: ~p~n", [ErrorReason]),
+            {reply, {error,{check_xbo,ErrorReason}}, State}
     end;
 handle_call({get_boxindices, GroupNameList}, _From, State) ->
     {reply, read_boxindices(GroupNameList), State};
@@ -97,7 +105,7 @@ handle_call({get_webinit, XBOid}, _From, State) ->
             {reply, {error,Reason}, State};
         Boxdata ->
             Config = get_webinit_conf(Boxdata),
-            {reply, xlib_box:webinit(Config), State} % TODO: make failsave -> server crashes when function webinit fails!
+            {reply, xlib_box:init(Config), State} % TODO: make failsave -> server crashes when function webinit fails!
     end;
 handle_call({execute_xbo, XBOid, DataMap}, From, State) ->
     case is_xbo_executing(XBOid, State) of
@@ -245,31 +253,19 @@ store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several ID
         _ -> {error, "Write failure"}
     end.
 
-check_xbo(XBO, StepNr, State) ->
-    StepCount = length(XBO#ibo_xbo.steps),
-    throw_if_true(StepNr > StepCount, "StepNr outside StepRange"),
-
+%% check init function of the XBO and that the XBO is not yet stored
+internal_check_xbo(#ibo_xbo{id = XBOid} = XBO, StepNr) ->
     Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
-    throw_if_false(Step#ibo_xbostep.domain =:= State#state.domain, "Step is for a different domain"),
-
-    XBOid = XBO#ibo_xbo.id,
-    throw_if_true(XBOid =:= "", "Id of XBO must not be empty"),
-
-
     Line = lists:nth(1, Step#ibo_xbostep.commands),
-    throw_if_false((Line#ibo_xboline.library =:= xlib_box andalso Line#ibo_xboline.command =:= webinit), "The first command must be webinit from the xlib_box library!"),
     case schema_validator:validate_schema(lists:nth(1, Line#ibo_xboline.args)) of
         {ok, _} ->
-            ok;
+            case db:is_key_in_table(ibo_boxdata,XBOid) of
+                false -> ok;
+                true -> {error, "XBO is already in Table"}
+            end;
         {error, {ReasonText, _}} ->
-            throw("The first element in args of the first command must be a valid schema: " ++ ReasonText)
-    end,
-
-    % TODO check other commands as well
-
-    % check if XBO already exists in database (=duplicate XBO) as last check -> slowest check
-    throw_if_true(db:is_key_in_table(ibo_boxdata,XBOid), "XBO is already in Table"),
-    ok.
+            {error, "The first element in args of the first command must be a valid schema: " ++ ReasonText}
+    end.
 
 read_boxindices(GroupNameList) when is_list(GroupNameList) ->
     Res = mnesia:transaction(
@@ -286,15 +282,6 @@ read_boxindices(GroupNameList) when is_list(GroupNameList) ->
 %%%===================================================================
 %%% Helper functions
 %%%===================================================================
-throw_if_false(Expression,ThrowReason) ->
-    case Expression of
-        true ->
-            ok;
-        _ ->
-            throw(ThrowReason)
-    end.
-throw_if_true(Expression,ThrowReason)->
-    throw_if_false(not Expression,ThrowReason).
 
 get_webinit_conf(Boxdata) ->
     Stepdata = #ibo_xbostepdata{stepnr = Boxdata#ibo_boxdata.xbostepnr},

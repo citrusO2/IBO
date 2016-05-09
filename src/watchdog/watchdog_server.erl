@@ -23,7 +23,7 @@
     terminate/2, code_change/3]).
 
 %% API
--export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0, connect/1, disconnect/1, connection_status/0]).
+-export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0, get_xactors/0, connect/1, disconnect/1, connection_status/0]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -42,9 +42,15 @@ start_iactor(IactorType, Name) when is_binary(Name) -> % when no special ARGS ar
 stop_iactor(Name) ->
     gen_server:call(?MODULE, {stop_iactor, Name}).
 
+%% returns the started iactors in a list
 -spec get_iactors() -> [{Name :: binary(), IactorType :: atom(), Args :: map()}].
 get_iactors() ->
     gen_server:call(?MODULE, get_iactors).
+
+%% returns a list of started iactors who are created to execute XBOs (=xactors)
+-spec get_xactors() -> [{Name :: binary(), IactorType :: atom(), Args :: map(), XlibInfo :: map()}].
+get_xactors() ->
+    gen_server:call(?MODULE, get_xactors).
 
 %% connects this node to the given node, the configuration is written to the disc
 -spec connect(Node :: node()) -> boolean() | ignored | already_running.
@@ -80,6 +86,8 @@ init([]) ->
 
 handle_call(get_iactors, _From, S) ->
     {reply, S#state.iactors,S};
+handle_call(get_xactors, _From, S) ->
+    {reply,get_xactors_from_iactors(S#state.iactors),S};
 handle_call({start_iactor, IactorType, Args}, _From, S) ->
     Name = maps:get(name, Args),
     case lists:keymember(Name, 1, S#state.iactors) of
@@ -172,6 +180,17 @@ get_actors_and_nodes({Node, _Timestamp}, {Actors, Nodes} = _AccIn) ->
 
 get_disconnected_nodes(Nodes) ->
     lists:subtract(Nodes, erlang:nodes(visible)).
+
+% filter xactors from iactors and add xlib infos
+get_xactors_from_iactors(Iactors) ->
+    lists:foldl(fun( {Name, IactorType, Args}, Xactors) ->
+        case erlang:function_exported(IactorType, xlib_info, 0) of
+            true ->
+                XlibInfo = erlang:apply(IactorType, xlib_info, []),
+                [ {Name, IactorType, Args, XlibInfo} | Xactors];
+            false ->
+                Xactors
+        end end, [], Iactors).
 
 %%%===================================================================
 %%% Dynamic IBO actor adding / removing

@@ -9,18 +9,7 @@
 -module(application_SUITE).
 -author("Florian").
 
--define(REPO_NAME, <<"REPO1">>).
--define(ROUTER_NAME, <<"ROUTER1">>).
--define(ERROR_NAME, <<"ERROR1">>).
--define(DIRECTORY_NAME, <<"DIRECTORY1">>).
--define(BOX_NAME, <<"BOX1">>).
--define(WEB_NAME, <<"WEB1">>).
-
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1 }).
--define(DIRECTORY_ARGS, #{name=>?DIRECTORY_NAME}).
--define(ERROR_ARGS, #{name=>?ERROR_NAME}).
--define(WEB_ARGS, #{name=>?WEB_NAME, directory=>?DIRECTORY_NAME, box => ?BOX_NAME, repo => ?REPO_NAME}).
--define(ROUTER_ARGS, #{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}).
+-include("template_ct_macros.hrl").
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config

@@ -9,27 +9,15 @@
 -module(distributed_SUITE).
 -author("Florian").
 
--define(REPO_NAME, <<"REPO1">>).
--define(ROUTER_NAME, <<"ROUTER1">>).
--define(ERROR_NAME, <<"ERROR1">>).
--define(DIRECTORY_NAME, <<"DIRECTORY1">>).
--define(BOX_NAME, <<"BOX1">>).
--define(WEB_NAME, <<"WEB1">>).
-
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1 }).
--define(DIRECTORY_ARGS, #{name=>?DIRECTORY_NAME}).
--define(ERROR_ARGS, #{name=>?ERROR_NAME}).
--define(WEB_ARGS, #{name=>?WEB_NAME, directory=>?DIRECTORY_NAME, box => ?BOX_NAME, repo => ?REPO_NAME}).
--define(ROUTER_ARGS, #{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}).
-
+-include("template_ct_macros.hrl").
 -define(SLAVE_NODE, 'testslave').
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([start_slave_test/1]).
+-export([start_slave_test/1, ibo_repo_router_box_test/1]).
 
-all() -> [start_slave_test].
+all() -> [start_slave_test, ibo_repo_router_box_test].
 
 init_per_suite(Config) ->
     mnesia:stop(),
@@ -40,16 +28,18 @@ init_per_suite(Config) ->
 end_per_suite(_Config) ->
     ibo_app:uninstall([node()]),
     ibo_app:stop_dependencies(),
-    stop_slave(?SLAVE_NODE).
+    stop_slave(?SLAVE_NODE),
+    ok = file:delete(deadletter_store),
+    ok = file:delete(watchdog_configuration).
 
 init_per_testcase(_, Config) ->
     ok = application:start(ibo),
     Config.
 
 end_per_testcase(_, _Config) ->
-    application:stop(ibo),
-    ok = file:delete(deadletter_store),
-    ok = file:delete(watchdog_configuration).
+    ok = application:stop(ibo).
+    %ok = file:delete(deadletter_store),
+    %ok = file:delete(watchdog_configuration)
 
 %%%===================================================================
 %%% Distributed Tests
@@ -61,8 +51,31 @@ start_slave_test(Config) ->
     ct_helper:print_var("Slave", Slave),
 
     true = is_map(watchdog_server:connection_status()),
-    io:format("output: ~p~n", [rpc:call(Slave, watchdog_server, connection_status, [])]),
-    true = is_map(rpc:call(Slave, watchdog_server, connection_status, [])),
+    true = is_map(watchdog_remote:connection_status(Slave)),
+    ok.
+
+%% start a router on the slave and start a template via router to the box
+ibo_repo_router_box_test(Config) ->
+    Slave = ?config(hostnode, Config),
+
+    ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
+    ok = watchdog_server:start_iactor(directory_sup, ?DIRECTORY_ARGS),
+    ok = watchdog_server:start_iactor(error_sup, ?ERROR_ARGS),
+    ok = watchdog_server:start_iactor(web_sup, ?WEB_ARGS),
+    ok = watchdog_server:start_iactor(box_sup, ?BOX_NAME),
+
+    ok = watchdog_remote:start_iactor(Slave, xbo_router_sup, ?ROUTER_ARGS),
+
+    Template = ?TEMPLATE_TESTTEMPLATE1,
+    User = ?MARKETINGUSER,
+    0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
+    0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
+    ok = repo_server:store_template(?REPO_NAME, Template),
+    ok = repo_server:start_template(?REPO_NAME, User, Template#ibo_repo_template.template),
+    ct_helper:wait(),
+
+    1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
+    1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
     ok.
 
 %%%===================================================================

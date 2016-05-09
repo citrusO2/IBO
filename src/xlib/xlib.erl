@@ -13,31 +13,22 @@
 
 %% API
 -export([start/1]).
--export([cjump/3]).
--export([send/3]).
--export([finish/1]).
--export([get_current_command/1, get_current_step/1]).
+-export([check_xbo/4]).
 
+-export([next/1, get_current_command/1, get_current_step/1]).
+
+%% function to start execution of an xlib_state
 start(State) ->
     apply_state(State).
 
-% conditional jump to a certain line
--spec cjump(#xlib_state{},non_neg_integer(),fun((#ibo_xbostepdata{},list(#ibo_xbostepdata{})|[]) -> true|false)) -> any() .
-cjump(State, LineNr, Condition) ->
-    case Condition(State#xlib_state.current_stepdata, State#xlib_state.xbo#ibo_xbo.stepdata) of
-        true ->
-            next(State#xlib_state{current_linenr = LineNr - 1});    % -1 because next increases the LineNr by 1
-        false ->
-            next(State)
+%% function to check if the XlibInfo matches the XBO, StepNr and Domain, but does not check the init function itself if one is used
+check_xbo(XBO, StepNr, Domain, XlibInfo) ->
+    try check_xbo_throw(XBO, StepNr, Domain, XlibInfo) of
+        ok -> ok
+    catch
+        _:Error ->
+            {error, Error}
     end.
-
-% ends the execution of the step and sends it to another destination
-send(State, NewStepNr, NewDestination) ->
-    {send, State, NewStepNr, NewDestination}.
-
-% ends the execution and finishes the xbo, by sending it to the router for the last time
-finish(State) ->
-    {finish, State}.
 
 % called at the end of each step to continue the loop
 next(State) when State#xlib_state.ttl > 0 ->
@@ -66,4 +57,66 @@ apply_state(State) ->
         true ->
             erlang:apply(Command#ibo_xboline.library, Command#ibo_xboline.command, [State|Command#ibo_xboline.args])
     end.
+
+%% stops the execution of the checks as soon as the first error is detected
+check_xbo_throw(XBO, StepNr, Domain, XlibInfo) ->
+    %check if stepnr is higher than the amount of steps
+    StepCount = length(XBO#ibo_xbo.steps),
+    throw_if_true(StepNr > StepCount, "StepNr outside StepRange"),
+
+    % check if the step is for the given domain
+    Step = lists:nth(StepNr, XBO#ibo_xbo.steps),
+    throw_if_false(Step#ibo_xbostep.domain =:= Domain, "Step is for a different domain"),
+
+    % check if the XBO even has an ID
+    XBOid = XBO#ibo_xbo.id,
+    throw_if_true(XBOid =:= "", "Id of XBO must not be empty"),
+
+    %% check if the XBO Step requires an init or not
+    Line = lists:nth(1, Step#ibo_xbostep.commands),
+    OtherCommands = case maps:find(init, XlibInfo) of
+        {ok, Library} ->
+            throw_if_false((Line#ibo_xboline.library =:= Library andalso Line#ibo_xboline.command =:= init), "The first command must be init from the library " ++ atom_to_list(Library)),
+            throw_if_false( function_exported(Library,init), "The library " ++ atom_to_list(Library) ++ " does not contain an init command"),
+            tl(Step#ibo_xbostep.commands);
+        error ->
+            throw_if_true( Line#ibo_xboline.command =:= init, "The first command must not be init"),
+            Step#ibo_xbostep.commands
+    end,
+
+    %% check if only certain libraries are used and if the used libraries even contain the right function
+    Libraries = maps:get(libraries, XlibInfo),
+    lists:foreach(fun(#ibo_xboline{library = L, command = C, args = A}) ->
+        throw_if_false(lists:member(L, Libraries), "The library " ++ atom_to_list(L) ++ " cannot be used"),
+        if
+            C =:= init -> % content of init has to be checked separately by the actor using the particular init
+                throw("Only the first command can be an init command");
+            A =:= undefined ->
+                throw_if_false( function_exported(L,C,1), "The library " ++ atom_to_list(L) ++ " does not contain the command " ++ atom_to_list(C));
+            is_list(A) ->   % Arity + 1 because internally the state is also added to the command
+                throw_if_false( function_exported(L,C,1+length(A)), "The command " ++ atom_to_list(C) ++ " of the library " ++ atom_to_list(L) ++ " does not exist or was used with a wrong argument")
+        end end, OtherCommands),
+    ok.
+
+throw_if_false(Expression,ThrowReason) ->
+    case Expression of
+        true ->
+            ok;
+        _ ->
+            throw(ThrowReason)
+    end.
+throw_if_true(Expression,ThrowReason)->
+    throw_if_false(not Expression,ThrowReason).
+
+function_exported(Module, Function, Arity) -> %% error in erlang, erlang:function_exported does not work without having the function called before or only after calling :module_info() of the module in question -> crashes tests
+    ExportedFunctions = apply(Module, module_info,[exports]),
+    lists:any( fun({F,A}) ->
+        (F =:= Function) and (A =:= Arity)
+    end, ExportedFunctions).
+
+function_exported(Module, Function) ->
+    ExportedFunctions = apply(Module, module_info,[exports]),
+    lists:any( fun({F,_A}) ->
+        F =:= Function
+    end, ExportedFunctions).
 

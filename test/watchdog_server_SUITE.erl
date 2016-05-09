@@ -12,15 +12,16 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([start_iactor_test/1, iactor_restart_test/1, iactor_restart_test2/1, iactor_restart_test3/1, iactor_doublestart_test/1, iactor_config_test/1, iactor_config_start_test/1, get_iactors_test/1, start_iactor_simple_test/1]).
+-export([start_iactor_test/1, iactor_restart_test/1, iactor_restart_test2/1, iactor_restart_test3/1, iactor_doublestart_test/1, iactor_config_test/1, iactor_config_start_test/1, get_iactors_test/1, get_xactors_test/1, start_iactor_simple_test/1]).
 
 -define(REPO_NAME, <<"REPO1">>).
 -define(ROUTER_NAME, <<"ROUTER1">>).
 -define(ERROR_SERVER_NAME, <<"ERRORSRV1">>).
+-define(BOX_NAME, <<"BOX1">>).
 -define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_SERVER_NAME], n => 1 }).
 -define(ERROR_ARGS, #{name => ?ERROR_SERVER_NAME}).
 
-all() -> [start_iactor_test, iactor_restart_test, iactor_restart_test2, iactor_restart_test3, iactor_doublestart_test, iactor_config_test, iactor_config_start_test, get_iactors_test, start_iactor_simple_test].
+all() -> [start_iactor_test, iactor_restart_test, iactor_restart_test2, iactor_restart_test3, iactor_doublestart_test, iactor_config_test, iactor_config_start_test, get_iactors_test, get_xactors_test, start_iactor_simple_test].
 
 init_per_suite(Config) ->
     Config.
@@ -147,6 +148,18 @@ get_iactors_test(_Config) ->
     Iactors = watchdog_server:get_iactors(),
     true = lists:member( {?REPO_NAME, repo_sup, ?REPO_ARGS}, Iactors),
     true = lists:member( {?ERROR_SERVER_NAME, error_sup, ?ERROR_ARGS}, Iactors),
+    ok.
+
+get_xactors_test(_Config) ->
+    ok = watchdog_server:start_iactor(repo_sup, ?REPO_ARGS),
+    ok = watchdog_server:start_iactor(error_sup, ?ERROR_ARGS),
+    [] = watchdog_server:get_xactors(),
+    ok = watchdog_server:start_iactor(box_sup, ?BOX_NAME),
+    Xactors = watchdog_server:get_xactors(),
+    1 = length(Xactors),
+    [Xactor] = Xactors,
+    XlibInfo = box_server:xlib_info(),
+    {?BOX_NAME, box_sup, _, XlibInfo} = Xactor,
     ok.
 
 start_iactor_simple_test(_Config) -> % if the ARGS only consists of a map with the name of the iactor, then instead of a map a binary can be given

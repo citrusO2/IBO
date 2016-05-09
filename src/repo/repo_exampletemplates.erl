@@ -12,7 +12,7 @@
 -include("repo_records.hrl").
 
 %% API
--export([install/0]).
+-export([install/1]).
 
 marketingbudget_template() ->
     #ibo_repo_template{
@@ -27,7 +27,7 @@ marketingbudget_template() ->
                 commands = [
                     #ibo_xboline{
                         library = xlib_box,
-                        command = webinit,
+                        command = init,
                         args = [
                             #{
                                 <<"title">> => <<"Marketing Budget - Amount">>,
@@ -49,7 +49,7 @@ marketingbudget_template() ->
                             }
                         ]
                     },
-                    #ibo_xboline{library = xlib, command = send, args = [2, "box_server"]}
+                    #ibo_xboline{library = xlib_basic, command = send, args = [2, "box_server"]}
                 ]},
             #ibo_xbostep{
                 domain = <<"box_server">>,
@@ -58,7 +58,7 @@ marketingbudget_template() ->
                 commands = [
                     #ibo_xboline{
                         library = xlib_box,
-                        command = webinit,
+                        command = init,
                         args = [
                             #{
                                 <<"title">> => <<"Marketing Budget - Decision">>,
@@ -85,15 +85,15 @@ marketingbudget_template() ->
                                 NewDescription = binary:list_to_bin([maps:get(<<"description">>, Taskdetailstemplate) , integer_to_binary(round(Budget)) , <<", because: ">> , Reason]),
                                 Taskdetailstemplate#{<<"description">> := NewDescription} end
                         ]
-                    }, #ibo_xboline{library = xlib, command = cjump, args = [5, fun(StepData, _OtherStepData) ->
+                    }, #ibo_xboline{library = xlib_basic, command = cjump, args = [5, fun(StepData, _OtherStepData) ->
                         case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else ->
                             false end end]}
-                    , #ibo_xboline{library = xlib, command = cjump, args = [6, fun(StepData, _OtherStepData) ->
+                    , #ibo_xboline{library = xlib_basic, command = cjump, args = [6, fun(StepData, _OtherStepData) ->
                         case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"rework">>} -> true; _Else ->
                             false end end]},
-                    #ibo_xboline{library = xlib, command = send, args = [3, "box_server"]},
-                    #ibo_xboline{library = xlib, command = send, args = [4, "box_server"]},
-                    #ibo_xboline{library = xlib, command = send, args = [6, "box_server"]}
+                    #ibo_xboline{library = xlib_basic, command = send, args = [3, "box_server"]},
+                    #ibo_xboline{library = xlib_basic, command = send, args = [4, "box_server"]},
+                    #ibo_xboline{library = xlib_basic, command = send, args = [6, "box_server"]}
                 ]},
             #ibo_xbostep{
                 domain = <<"box_server">>,
@@ -101,7 +101,7 @@ marketingbudget_template() ->
                 description = <<"Marketing Budget Decision">>,
                 commands = [#ibo_xboline{
                     library = xlib_box,
-                    command = webinit,
+                    command = init,
                     args = [
                         #{
                             <<"title">> => <<"Marketing Budget - Denied">>,
@@ -122,7 +122,7 @@ marketingbudget_template() ->
                             NewDescription = binary:list_to_bin([ maps:get(<<"description">>, Taskdetailstemplate) , Reason]),
                             Taskdetailstemplate#{<<"description">> := NewDescription} end
                     ]
-                }, #ibo_xboline{library = xlib, command = finish}
+                }, #ibo_xboline{library = xlib_basic, command = finish}
                 ]
             },
             #ibo_xbostep{
@@ -131,7 +131,7 @@ marketingbudget_template() ->
                 description = <<"Marketing Budget Decision">>,
                 commands = [#ibo_xboline{
                     library = xlib_box,
-                    command = webinit,
+                    command = init,
                     args = [
                         #{
                             <<"title">> => <<"Marketing Budget - Approved">>,
@@ -152,7 +152,7 @@ marketingbudget_template() ->
                             NewDescription = binary:list_to_bin([maps:get(<<"description">>, Taskdetailstemplate), Reason]),
                             Taskdetailstemplate#{<<"description">> := NewDescription} end
                     ]
-                }, #ibo_xboline{library = xlib, command = send, args = [5, "box_server"]}
+                }, #ibo_xboline{library = xlib_basic, command = send, args = [5, "box_server"]}
                 ]
             },
             #ibo_xbostep{
@@ -161,7 +161,7 @@ marketingbudget_template() ->
                 description = <<"Marketing Budget Decision">>,
                 commands = [#ibo_xboline{
                     library = xlib_box,
-                    command = webinit,
+                    command = init,
                     args = [
                         #{
                             <<"title">> => <<"Marketing Budget - Approved">>,
@@ -184,7 +184,7 @@ marketingbudget_template() ->
                             NewDescription = binary:list_to_bin([maps:get(<<"description">>, Taskdetailstemplate), integer_to_binary(round(Budget)), <<", because: ">>, Reason]),
                             Taskdetailstemplate#{<<"description">> := NewDescription} end
                     ]
-                }, #ibo_xboline{library = xlib, command = finish}
+                }, #ibo_xboline{library = xlib_basic, command = finish}
                 ]
             },
             #ibo_xbostep{
@@ -194,7 +194,7 @@ marketingbudget_template() ->
                 commands = [
                     #ibo_xboline{
                         library = xlib_box,
-                        command = webinit,
+                        command = init,
                         args = [
                             #{
                                 <<"title">> => <<"Marketing Budget - Rework">>,
@@ -220,7 +220,7 @@ marketingbudget_template() ->
                                 Taskdetailstemplate#{<<"description">> := NewDescription} end
                         ]
                     },
-                    #ibo_xboline{library = xlib, command = send, args = [2, "box_server"]}
+                    #ibo_xboline{library = xlib_basic, command = send, args = [2, "box_server"]}
                 ]}
         ],
         groups = [<<"marketing">>],
@@ -229,8 +229,8 @@ marketingbudget_template() ->
         transform = fun(IBO,_Args) -> IBO end
     }.
 
-install() ->
+install(RepoServer) ->
     Templates = [marketingbudget_template()],
-    lists:foreach(fun(Template) -> repo_server:store_template(Template) end, Templates),
+    lists:foreach(fun(Template) -> repo_server:store_template(RepoServer, Template) end, Templates),
     ok.
 

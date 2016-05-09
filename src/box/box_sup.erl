@@ -16,10 +16,13 @@
 -export([init/1]).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, xlib_info/0]).
 
 start_link(Args) ->
     supervisor:start_link(?MODULE, Args).
+
+xlib_info() ->
+    box_server:xlib_info().
 
 %%%===================================================================
 %%% supervisor callbacks

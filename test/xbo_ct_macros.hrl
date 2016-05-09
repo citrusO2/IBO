@@ -18,7 +18,7 @@
 -define(XBO_COMMANDS, [
     #ibo_xboline{
         library = xlib_box,
-        command = webinit,
+        command = init,
         args = [
             #{
                 <<"title">> => <<"Marketing Budget - Decision">>,
@@ -40,13 +40,13 @@
                 <<"required">> => [<<"reason">>, <<"yesno">>]
             }
         ]
-    },#ibo_xboline{library = xlib, command = finish}
+    },#ibo_xboline{library = xlib_basic, command = finish}
 ]).
 
 -define(XBO_COMMANDS2, [
     #ibo_xboline{
         library = xlib_box,
-        command = webinit,
+        command = init,
         args = [
             #{
                 <<"title">> => <<"Marketing Budget - Decision2">>,
@@ -68,15 +68,15 @@
                 <<"required">> => [<<"reason">>, <<"yesno">>]
             }
         ]
-    },#ibo_xboline{library = xlib, command = cjump, args = [4, fun(StepData, OtherStepData) -> case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else -> false end end]},
-    #ibo_xboline{library = xlib, command = send, args = [1, ?BOX_NAME]},
-    #ibo_xboline{library = xlib, command = finish}
+    },#ibo_xboline{library = xlib_basic, command = cjump, args = [4, fun(StepData, _OtherStepData) -> case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else -> false end end]},
+    #ibo_xboline{library = xlib_basic, command = send, args = [1, ?BOX_NAME]},
+    #ibo_xboline{library = xlib_basic, command = finish}
 ]).
 
 -define(XBO_COMMANDS3, [
     #ibo_xboline{
         library = xlib_box,
-        command = webinit,
+        command = init,
         args = [
             #{
                 <<"title">> => <<"Marketing Budget - Decision">>,
@@ -96,9 +96,9 @@
                     }
                 },
                 <<"required">> => [<<"reason">>, <<"yesno">>]
-            },fun(Taskdetailstemplate, OtherStepdata) -> Taskdetailstemplate#{<<"description">> := <<"Wuhu, replaced task description">>} end
+            },fun(Taskdetailstemplate, _OtherStepdata) -> Taskdetailstemplate#{<<"description">> := <<"Wuhu, replaced task description">>} end
         ]
-    },#ibo_xboline{library = xlib, command = finish}
+    },#ibo_xboline{library = xlib_basic, command = finish}
 ]).
 
 -define(XBO, #ibo_xbo{
@@ -242,7 +242,7 @@
         commands = [
             #ibo_xboline{
                 library = xlib_box,
-                command = webinit,
+                command = init,
                 args = [
                     #{
                         <<"title">> => <<"Marketing Budget - Decision2">>,
@@ -264,11 +264,11 @@
                         <<"required">> => [<<"reason">>, <<"yesno">>]
                     }
                 ]
-            }, #ibo_xboline{library = xlib, command = cjump, args = [4, fun(StepData, OtherStepData) ->
+            }, #ibo_xboline{library = xlib_basic, command = cjump, args = [4, fun(StepData, OtherStepData) ->
                 case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else ->
                     false end end]},
-            #ibo_xboline{library = xlib, command = send, args = [1, "box_server"]},
-            #ibo_xboline{library = xlib, command = send, args = [2, "box_server"]}
+            #ibo_xboline{library = xlib_basic, command = send, args = [1, "box_server"]},
+            #ibo_xboline{library = xlib_basic, command = send, args = [2, "box_server"]}
         ]
     }, #ibo_xbostep{
         domain = ?BOX_NAME,
@@ -276,7 +276,7 @@
         description = <<"Accept or deny the marketing budget">>,
         commands = [#ibo_xboline{
             library = xlib_box,
-            command = webinit,
+            command = init,
             args = [
                 #{
                     <<"title">> => <<"Marketing Budget - Decision approved">>,
@@ -293,7 +293,7 @@
                     <<"required">> => [<<"ok">>]
                 }
             ]
-        }, #ibo_xboline{library = xlib, command = finish}
+        }, #ibo_xboline{library = xlib_basic, command = finish}
         ]
     }
     ]

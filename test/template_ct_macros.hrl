@@ -12,9 +12,19 @@
 -include("../src/repo/repo_records.hrl").
 -include("../src/directory/directory_records.hrl").
 
--define(BOX_NAME, <<"BOX1">>).
--define(ROUTER_NAME, <<"ROUTER1">>).
 -define(REPO_NAME, <<"REPO1">>).
+-define(ROUTER_NAME, <<"ROUTER1">>).
+-define(ERROR_NAME, <<"ERROR1">>).
+-define(DIRECTORY_NAME, <<"DIRECTORY1">>).
+-define(BOX_NAME, <<"BOX1">>).
+-define(WEB_NAME, <<"WEB1">>).
+
+-define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1 }).
+-define(DIRECTORY_ARGS, #{name=>?DIRECTORY_NAME}).
+-define(ERROR_ARGS, #{name=>?ERROR_NAME}).
+-define(WEB_ARGS, #{name=>?WEB_NAME, directory=>?DIRECTORY_NAME, box => ?BOX_NAME, repo => ?REPO_NAME}).
+-define(ROUTER_ARGS, #{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}).
+
 
 -define(MARKETINGUSER, #ibo_user{username = <<"dd">>, firstname = <<"Doris">>, lastname = <<"Dührwald">>, groups = [<<"marketing">>]}).
 
@@ -26,7 +36,7 @@
         commands = [
             #ibo_xboline{
                 library = xlib_box,
-                command = webinit,
+                command = init,
                 args = [
                     #{
                         <<"title">> => <<"Marketing Budget - Decision2">>,
@@ -48,11 +58,11 @@
                         <<"required">> => [<<"reason">>, <<"yesno">>]
                     }
                 ]
-            }, #ibo_xboline{library = xlib, command = cjump, args = [4, fun(StepData, OtherStepData) ->
+            }, #ibo_xboline{library = xlib_basic, command = cjump, args = [4, fun(StepData, _OtherStepData) ->
                 case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else ->
                     false end end]},
-            #ibo_xboline{library = xlib, command = send, args = [1, "box_server"]},
-            #ibo_xboline{library = xlib, command = send, args = [2, "box_server"]}
+            #ibo_xboline{library = xlib_basic, command = send, args = [1, "box_server"]},
+            #ibo_xboline{library = xlib_basic, command = send, args = [2, "box_server"]}
         ]},
     #ibo_xbostep{
         domain = ?BOX_NAME,
@@ -60,7 +70,7 @@
         description = <<"Accept or deny the marketing budget">>,
         commands = [#ibo_xboline{
             library = xlib_box,
-            command = webinit,
+            command = init,
             args = [
                 #{
                     <<"title">> => <<"Marketing Budget - Decision approved">>,
@@ -77,7 +87,7 @@
                     <<"required">> => [<<"ok">>]
                 }
             ]
-        }, #ibo_xboline{library = xlib, command = finish}
+        }, #ibo_xboline{library = xlib_basic, command = finish}
         ]
     }
 ]).
