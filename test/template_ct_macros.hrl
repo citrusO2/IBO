@@ -17,6 +17,7 @@
 -define(ERROR_NAME, <<"ERROR1">>).
 -define(DIRECTORY_NAME, <<"DIRECTORY1">>).
 -define(BOX_NAME, <<"BOX1">>).
+-define(BOX2_NAME, <<"BOX2">>).
 -define(WEB_NAME, <<"WEB1">>).
 
 -define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1 }).

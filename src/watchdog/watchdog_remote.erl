@@ -10,7 +10,7 @@
 -author("Florian").
 
 %% API
--export([start_iactor/3, stop_iactor/2, get_iactors/1, connect/2, disconnect/2, connection_status/1]).
+-export([start_iactor/3, stop_iactor/2, get_iactors/1, get_xactors/1, connect/2, disconnect/2, connection_status/1]).
 
 start_iactor(HostNode, IactorType, Args) ->
     rpc:call(HostNode, watchdog_server, start_iactor, [IactorType, Args]).
@@ -20,6 +20,9 @@ stop_iactor(HostNode, Name) ->
 
 get_iactors(HostNode) ->
     rpc:call(HostNode, watchdog_server, get_iactors, []).
+
+get_xactors(HostNode) ->
+    rpc:call(HostNode, watchdog_server, get_xactors, []).
 
 connect(HostNode, Node) ->
     rpc:call(HostNode, watchdog_server, connect, [Node]).

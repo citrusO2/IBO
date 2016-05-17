@@ -23,7 +23,7 @@
     terminate/2, code_change/3]).
 
 %% API
--export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0, get_xactors/0, connect/1, disconnect/1, connection_status/0]).
+-export([start_link/0, start_iactor/2, stop_iactor/1, get_iactors/0, get_xactors/0, get_global_xactors/0, connect/1, disconnect/1, connection_status/0]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -51,6 +51,21 @@ get_iactors() ->
 -spec get_xactors() -> [{Name :: binary(), IactorType :: atom(), Args :: map(), XlibInfo :: map()}].
 get_xactors() ->
     gen_server:call(?MODULE, get_xactors).
+
+%% get a list of started iactors who are created to execute XBOs (=xactors) from all connected nodes
+-spec get_global_xactors() -> [{Name :: binary(), IactorType :: atom(), Args :: map(), XlibInfo :: map()}].
+get_global_xactors() ->
+    LocalXactors = get_xactors(),
+    ConnectedNodes = maps:get(connected, connection_status()),
+    lists:foldl(
+        fun(Node, Acc) ->
+            case watchdog_remote:get_xactors(Node) of
+                {badrpc, _Reason} ->
+                    Acc;
+                Xactors ->
+                    lists:append(Acc, Xactors)
+            end
+        end, LocalXactors, ConnectedNodes).
 
 %% connects this node to the given node, the configuration is written to the disc
 -spec connect(Node :: node()) -> boolean() | ignored | already_running.

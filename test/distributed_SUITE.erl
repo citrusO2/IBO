@@ -15,9 +15,9 @@
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
--export([start_slave_test/1, ibo_repo_router_box_test/1]).
+-export([start_slave_test/1, ibo_repo_router_box_test/1, get_global_xactors_test/1]).
 
-all() -> [start_slave_test, ibo_repo_router_box_test].
+all() -> [start_slave_test, ibo_repo_router_box_test, get_global_xactors_test].
 
 init_per_suite(Config) ->
     mnesia:stop(),
@@ -34,6 +34,8 @@ end_per_suite(_Config) ->
 
 init_per_testcase(_, Config) ->
     ok = application:start(ibo),
+    Slave = ?config(hostnode, Config),
+    watchdog_server:connect(Slave),
     Config.
 
 end_per_testcase(_, _Config) ->
@@ -66,6 +68,7 @@ ibo_repo_router_box_test(Config) ->
 
     ok = watchdog_remote:start_iactor(Slave, xbo_router_sup, ?ROUTER_ARGS),
 
+
     Template = ?TEMPLATE_TESTTEMPLATE1,
     User = ?MARKETINGUSER,
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
@@ -76,6 +79,27 @@ ibo_repo_router_box_test(Config) ->
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     1 = ct_helper:get_recordcount_in_table(ibo_boxindex),
+    ok.
+
+%% check if both xactors (local and remote) are listed by the watchdog_server's get_global_xactors function
+get_global_xactors_test(Config) ->
+    Slave = ?config(hostnode, Config),
+    ok = watchdog_remote:start_iactor(Slave, box_sup, ?BOX2_NAME),
+
+    Xactors = watchdog_server:get_global_xactors(),
+    2 = length(Xactors),
+    XlibInfo = box_server:xlib_info(),
+
+    true = lists:any(
+        fun({Name, box_sup, _Args, XInfo}) ->
+            (Name =:= ?BOX_NAME) and (XInfo =:= XlibInfo)
+        end, Xactors
+    ),
+    true = lists:any(
+        fun({Name, box_sup, _Args, XInfo}) ->
+            (Name =:= ?BOX2_NAME) and (XInfo =:= XlibInfo)
+        end, Xactors
+    ),
     ok.
 
 %%%===================================================================
