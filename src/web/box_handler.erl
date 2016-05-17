@@ -48,7 +48,7 @@ is_authorized(Req, State) ->
         {basic, UserID, Password} ->
             case directory_server:get_user_info(State#state.directory_server_name, UserID, Password) of
                 User when is_tuple(User) andalso element(1, User) =:= ibo_user ->
-                    {true, Req, #state{ibo_user = User}};
+                    {true, Req, State#state{ibo_user = User}};
 %%                {error, Reason} ->
 %%                    {{false, <<"Basic realm=\"cowboy\"">>}, Req, State};
                 _ ->
@@ -62,8 +62,9 @@ is_authorized(Req, State) ->
 forbidden(Req, State) ->
     case cowboy_req:binding(box_path, Req) of
         undefined ->    % = no additional path given
+
             NewState = State#state{
-                ibo_boxindices = box_server:get_boxindices(State#state.directory_server_name, State#state.ibo_user),
+                ibo_boxindices = box_server:get_boxindices(State#state.box_server_name, State#state.ibo_user),
                 type = overview
             },
             {false, Req, NewState};

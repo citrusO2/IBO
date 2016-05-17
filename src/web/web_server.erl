@@ -42,7 +42,8 @@ init(#{directory := _Directory, box := _Box, repo := _Repo, name := Name} = Args
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
             {"/api/box/[:box_path]", box_handler, Args},
             {"/api/directory/[:user_path]", directory_handler, Args},
-            {"/api/repo/[:repo_path]", repo_handler, Args},
+            {"/api/repo/[:repo_type]", repo_handler, Args},
+            {"/api/repo/[:repo_type]/[:repo_path]", repo_handler, Args},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}
     ]),
@@ -62,5 +63,6 @@ handle_cast(_Msg, State) -> {noreply, State}.
 handle_info(_Info, State) -> {noreply, State}.
 terminate(_Reason, _State) ->
     io:format("~p stopping~n", [?MODULE]),
+    cowboy:stop_listener(http),
     ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.

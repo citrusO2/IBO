@@ -2,8 +2,11 @@
     <strong>Error</strong> {{error}}
 </div>
 <h1 class="page-header">Overview - Welcome, {{user.firstname}}</h1>
-<p>
+<p data-ng-show="indices.length">
     Here you can see an overview of your open tasks
+</p>
+<p data-ng-hide="indices.length">
+    You have no tasks available in any group
 </p>
 
 <div data-ng-repeat="index in indices">

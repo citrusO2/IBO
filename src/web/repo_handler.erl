@@ -13,7 +13,7 @@
 -include("handler_macros.hrl").
 
 -record(state, {
-    type :: undefined | list | start,
+    type :: undefined | list | start | domain,
     ibo_user :: #ibo_user{} | undefined,
     templates :: list(nonempty_string()),
     repo_server_name :: binary(),
@@ -45,7 +45,7 @@ is_authorized(Req, State) ->
         {basic, UserID, Password} ->
             case directory_server:get_user_info(State#state.directory_server_name, UserID,Password) of
                 User when is_tuple(User) andalso element(1,User) =:= ibo_user ->
-                    {true, Req, #state{ibo_user = User}};
+                    {true, Req, State#state{ibo_user = User}};
                 _ ->
                     {{false, <<"Basic realm=\"cowboy\"">>}, Req, State}
             end;
@@ -54,18 +54,28 @@ is_authorized(Req, State) ->
     end.
 
 forbidden(Req, State) ->
-    case cowboy_req:binding(repo_path, Req) of
-        undefined ->    % = no additional path given
-            {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, State#state.ibo_user)}};
-        TemplateName ->
-            % TODO: only check if forbidden first, handle other errors later
-            case repo_server:start_template(State#state.repo_server_name, State#state.ibo_user, TemplateName) of
-                {error, _Message} ->
-                    {true, Req, State#state{type = start}};
-                _Else ->
-                    {false, Req, State#state{type = start}}
-            end
+    case cowboy_req:binding(repo_type, Req) of
+        <<"process">> ->
+            case cowboy_req:binding(repo_path, Req) of
+                undefined ->    % = no additional path given
+                    {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, State#state.ibo_user)}};
+                TemplateName ->
+                    % TODO: only check if forbidden first, handle other errors later
+                    case repo_server:start_template(State#state.repo_server_name, State#state.ibo_user, TemplateName) of
+                        {error, _Message} ->
+                            {true, Req, State#state{type = start}};
+                        _Else ->
+                            {false, Req, State#state{type = start}}
+                    end
+            end;
+        <<"domain">> ->
+            {false, Req, State#state{type = domain}};
+        Else ->
+            io:format("Error of repo_type ~p~n", [Else]),
+            {true, Req, State#state{type = error}}
     end.
+
+
 
 %% ------------------------
 
@@ -81,6 +91,9 @@ content_types_accepted(Req, State) ->
 
 json_get(Req, State) when State#state.type =:= list ->
     Body = jsx:encode(State#state.templates),
+    {Body, Req, State};
+json_get(Req, State) when State#state.type =:= domain ->
+    Body = jsx:encode(json_helper:prepareXactors(watchdog_server:get_global_xactors())),
     {Body, Req, State}.
 
 json_post(Req, State) when State#state.type =:= start ->

@@ -121,7 +121,7 @@
                     }
 
                 },function(res){
-                    $scope.error = "Could not retrieve args for the box!<br>";
+                    $scope.error = "Could not retrieve args for the box! ";
                     if(res.status == 500)
                         $scope.error += "Internal server error (500)";
                     else if(res.status == 404)
@@ -134,34 +134,169 @@
     ]);
 
     iboControllers.controller('NewProcCtrl', ['$scope', '$routeParams','$http','AuthService',
-            function($scope, $routeParams, $http, AuthService) {
-                $scope.error = null;
-                $scope.processes = [];
+        function($scope, $routeParams, $http, AuthService) {
+            $scope.error = null;
+            $scope.processes = [];
 
-                $http.get('/api/repo', AuthService.currentHeader()).then(
-                    function(res){
-                        $scope.processes = res.data;
-                    },function(res){
-                        $scope.error = "Could not retrieve processes for the box!<br>";
-                        if(res.status == 500)
-                            $scope.error += "Internal server error (500)";
-                        else if(res.status == 404)
-                            $scope.error += "Cannot find the requested resource (404)";
-                        else if(res.status == 403)
-                            $scope.error += "You do not have access the requested resource (403)";
-                    }
-                );
+            $http.get('/api/repo/process', AuthService.currentHeader()).then(
+                function(res){
+                    $scope.processes = res.data;
+                },function(res){
+                    $scope.error = "Could not retrieve processes for the box! ";
+                    if(res.status == 500)
+                        $scope.error += "Internal server error (500)";
+                    else if(res.status == 404)
+                        $scope.error += "Cannot find the requested resource (404)";
+                    else if(res.status == 403)
+                        $scope.error += "You do not have access the requested resource (403)";
+                }
+            );
 
-                $scope.startprocess = function(processName){
-                    var r = confirm("Start process \""+processName+"\"?");
-                    if(r == true){
-                        $http.post('/api/repo/'+processName,processName,AuthService.currentHeader()).then(
-                            function(res){$scope.success = "Process started successfully";},
-                            function(res){$scope.error = res.data.error;}
-                        );
+            $scope.startprocess = function(processName){
+                var r = confirm("Start process \""+processName+"\"?");
+                if(r == true){
+                    $http.post('/api/repo/process'+processName,processName,AuthService.currentHeader()).then(
+                        function(res){$scope.success = "Process started successfully";},
+                        function(res){$scope.error = res.data.error;}
+                    );
+                }
+            };
+        }
+    ]);
+
+    iboControllers.controller('NewProcTemplCtrl', ['$scope', '$routeParams','$http','AuthService',
+        function($scope, $routeParams, $http, AuthService) {
+            $scope.error = null;
+            $scope.steps = [];
+            $scope.startStep = null;
+            $scope.xactors = null;
+
+            $http.get('/api/repo/domain', AuthService.currentHeader()).then(
+                function(res){
+                    $scope.xactors = res.data;
+                    //console.log(res.data);
+                },function(res){
+                    $scope.error = "Could not retrieve running xactors! ";
+                    if(res.status == 500)
+                        $scope.error += "Internal server error (500)";
+                    else if(res.status == 404)
+                        $scope.error += "Cannot find the requested resource (404)";
+                    else if(res.status == 403)
+                        $scope.error += "You do not have access the requested resource (403)";
+                }
+            );
+
+            var canvas = $('#modelCanvas');
+            var defaultCanvasHeight = canvas.height();
+            var graph = new joint.dia.Graph();
+            var paper = new joint.dia.Paper({
+                el: canvas,
+                width: canvas.width(),
+                height: canvas.height(),
+                gridSize: 1,
+                model: graph,
+                restrictTranslate: true, // so that elements cannot move outside the bounding box
+            });
+            var uml = joint.shapes.uml;
+            var startState = new uml.StartState({
+                position: { x:20  , y: 20 },
+                size: { width: 30, height: 30 },
+                attrs: {
+                    'circle': {
+                        fill: '#4b4a67',
+                        stroke: 'none'
                     }
+                }
+            });
+            var endState = new uml.EndState({
+                position: { x:750  , y: 550 },
+                size: { width: 30, height: 30 },
+                attrs: {
+                    '.outer': {
+                        stroke: "#4b4a67",
+                        'stroke-width': 2
+                    },
+                    '.inner': {
+                        fill: '#4b4a67'
+                    }
+                }
+            });
+            var startTransition = null;
+            graph.addCells([startState, endState]);
+
+            $(window).resize(function() {
+                paper.setDimensions(canvas.width(), defaultCanvasHeight);
+            });
+
+            $scope.newStep = function(Description, Domain, Local){
+                var Step = {
+                   description: Description,
+                   domain: Domain,
+                   local: Local,
+                   commands: [],
+                   umlState: getUmlState(Description, Domain, Local, [])
                 };
+                $scope.steps.push(Step);
+                graph.addCell(Step.umlState);
+                $('#newStepModal').modal('hide');
+            };
+
+            $scope.setStartStep = function(Step){
+                $scope.startStep = Step;
+                if (startTransition == null){
+                    startTransition = getUmlTransition(startState.id, Step.umlState.id);
+                    graph.addCell(startTransition);
+                } else {
+                    startTransition.set('target', {id: Step.umlState.id});
+                }
+            };
+
+            function getUmlState(Description, Domain, Local, Commands){
+                return new uml.State({
+                    position: { x:100  , y: 100 },
+                    size: { width: 200, height: 100 },
+                    name: getStateName(Description, Domain, Local),
+                    events: ["entry / init()","exit / destroy()"],
+                    attrs: {
+                        '.uml-state-body': {
+                            fill: 'rgba(48, 208, 198, 0.1)',
+                            stroke: 'rgba(48, 208, 198, 0.5)',
+                            'stroke-width': 1.5
+                        },
+                        '.uml-state-separator': {
+                            stroke: 'rgba(48, 208, 198, 0.4)'
+                        }
+                    }
+                });
             }
-        ]);
+
+            function getUmlTransition(IdSource, IdTarget){
+                return new uml.Transition({
+                    source: {id: IdSource},
+                    target: {id: IdTarget},
+                    attrs: {
+                        '.connection' : {
+                            'fill': 'none',
+                            'stroke-linejoin': 'round',
+                            'stroke-width': '2',
+                            'stroke': '#4b4a67'
+                        },
+                        '.marker-vertices': { display : 'none' },   // to disable the direct modification of the links
+                        '.marker-arrowheads': { display: 'none' },
+                        '.connection-wrap': { display: 'none' },
+                        '.link-tools': { display : 'none' }
+                    }
+                });
+            }
+
+            function getStateName(Description, Domain, Local){
+                if(Local == ""){
+                    return Description + "@" + Domain;
+                } else {
+                    return Description + "@" + Local + ":" + Domain;
+                }
+            }
+        }
+    ]);
 
 })();

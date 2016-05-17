@@ -35,7 +35,7 @@ is_authorized(Req, State) ->
         {basic, UserID, Password} ->
             case directory_server:get_user_info(State#state.directory_server_name, UserID,Password) of
                 User when is_tuple(User) andalso element(1,User) =:= ibo_user ->
-                    {true, Req, #state{ibo_user = User}};
+                    {true, Req, State#state{ibo_user = User}};
                 _ ->
                     {{false, <<"Basic realm=\"cowboy\"">>}, Req, State}
             end;

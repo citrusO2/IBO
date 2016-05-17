@@ -21,6 +21,10 @@
                 templateUrl: 'partials/proclist.html',
                 controller: 'NewProcCtrl',
                 activenav: 'detail'
+            }).when('/newtemplate', {
+                templateUrl: 'partials/proctemplate.html',
+                controller: 'NewProcTemplCtrl',
+                activenav: 'detail'
             }).otherwise({
                 redirectTo: '/login'
             });

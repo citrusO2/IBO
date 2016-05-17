@@ -1,0 +1,72 @@
+<div class="alert alert-danger" data-ng-show="error">
+    <strong>Error</strong> {{error}}
+</div>
+<div class="alert alert-success" data-ng-show="success">
+    <strong>Success!</strong> {{success}}
+</div>
+<h1 class="page-header">Create a new process template</h1>
+
+<p data-ng-hide="xactors.length">
+    No actors available!
+</p>
+
+<div class="row" data-ng-show="xactors.length">
+    <div class="col-md-2" data-ng-repeat="actor in xactors">
+        <div class="bs-callout bs-callout-default">
+            <h4>{{actor.name}}</h4>
+            Type: {{actor.type}}<br>
+            Libs: <span data-ng-repeat="lib in actor.info.libraries">{{lib}}, </span>
+        </div>
+    </div>
+</div>
+
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-default" data-toggle="modal" data-target="#newStepModal">
+        <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> New Step
+    </button>
+    <!-- Start-State  -->
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-default dropdown-toggle" data-ng-class="(steps.length == 0 ) ? 'disabled':''" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Set StartStep
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li data-ng-repeat="step in steps"><a href="" data-ng-click="setStartStep(step)">{{step.umlState.attributes.name}}</a></li>
+        </ul>
+    </div>
+</div>
+
+<div id="modelCanvas" class="well" style="min-height: 600px; min-width: 800px; padding: 0">
+</div>
+
+<!-- new step modal -->
+<div class="modal fade" id="newStepModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Create new step</h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="stepDescription">Name/Description of the step</label>
+                    <input data-ng-model="newStepDescription" type="text" class="form-control" id="stepDescription" placeholder="Name/Description">
+                </div>
+                <div class="form-group">
+                    <label for="stepDomain">Domain of the step</label>
+                    <select data-ng-model="newStepDomain" class="form-control" id="stepDomain">
+                        <option data-ng-repeat="actor in xactors">{{actor.name}}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stepLocal">Local of the step</label>
+                    <input data-ng-model="newStepLocal" type="text" class="form-control" id="stepLocal" placeholder="Domain">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-ng-click="newStep(newStepDescription, newStepDomain, newStepLocal)">Add to template</button>
+            </div>
+        </div>
+    </div>
+</div>

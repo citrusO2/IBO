@@ -13,7 +13,10 @@
     <title>Dashboard Template for Bootstrap</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="./libs/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+
+    <!-- jointjs -->
+    <link href="./libs/jointjs/joint.min.css" rel="stylesheet" type="text/css">
 
     <!-- Custom styles for this template -->
     <link href="dashboard.css" rel="stylesheet">
@@ -109,6 +112,7 @@
             <ul class="nav nav-sidebar">
                 <li><a href="#/overview" data-active-link="active">Overview</a></li>
                 <li><a href="#/proclist" data-active-link="active">Start New Process</a></li>
+                <li><a href="#/newtemplate" data-active-link="active">Create New Process Template</a></li>
             </ul>
             <ul class="nav nav-sidebar" id="activeTasks">
                 <li data-ng-repeat="task in tasks"><a href="#/box/{{task.xboid}}" data-active-link="active">{{task.xbotemplate}}</a></li>
@@ -128,12 +132,28 @@
 <!-- Bootstrap core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<!-- jquery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 <script>window.jQuery || document.write('<script src="./libs/jquery/jquery.min.js"><\/script>')</script>
+
+<!-- bootstrap -->
 <script src="./libs/bootstrap/js/bootstrap.min.js"></script>
+
+<!-- angular -->
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+<script>window.angular || document.write('<script src="./libs/angular/angular.min.js"><\/script>')</script>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular-route.min.js"></script>
+<script>try { angular.module('ngRoute'); } catch(e) { document.write('<script src="./libs/angular/angular-route.min.js"><\/script>'); }</script>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular-sanitize.min.js"></script>
+<script>try { angular.module('ngSanitize'); } catch(e) { document.write('<script src="./libs/angular/angular-sanitize.min.js"><\/script>'); }</script>
+
+<!-- jointjs (+jquery)-->
+<script src="./libs/jointjs/lodash.min.js"></script>
+<script src="./libs/jointjs/backbone-min.js"></script>
+<script src="./libs/jointjs/joint.js"></script>
+<script src="./libs/jointjs/joint.shapes.uml.js"></script>
+
+<!-- schemaform -->
 <script src="./libs/tv4/tv4.min.js"></script>
 <script src="./libs/objectpath/ObjectPath.js"></script>
 <script src="./libs/schemaform/schema-form.min.js"></script>
