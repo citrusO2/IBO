@@ -16,6 +16,48 @@
 -export([send/3]).
 -export([finish/1]).
 
+-export([xlib_info/0]).
+
+% returns a map with the exported lib-functions
+xlib_info() ->
+    #{
+        cjump => #{
+            description => <<"Manipulates the order of the command execution">>,
+            args => [
+                #{
+                    name => <<"LineNr">>,
+                    description => <<"The line number that the execution should jump to">>,
+                    type => <<"integer">>   % work in progress
+                },
+                #{
+                    name => <<"Condition">>,
+                    description => <<"The condition used to evaluate if the execution should jump to the given line number">>,
+                    type => <<"condition">>
+                }
+            ]
+        },
+        send => #{
+            description => <<"Sends the XBO to the next actor">>,
+            args => [
+                #{
+                    name => <<"NewStepNr">>,
+                    description => <<"The next step to execute">>,
+                    type => <<"step">> % work in progress
+                }%,
+%%                #{
+%%                    name => <<"Destination">>,
+%%                    description => <<"The destination that the packet should be send to">>,
+%%                    type => <<"domain">> % work in progress
+%%                }
+            ]
+        },
+        finish => #{
+            description => <<"Ends the execution of the XBO">>,
+            args => []
+        }
+
+    }.
+
 % conditional jump to a certain line
 -spec cjump(#xlib_state{},non_neg_integer(),fun((#ibo_xbostepdata{},list(#ibo_xbostepdata{})|[]) -> true|false)) -> any() .
 cjump(State, LineNr, Condition) ->

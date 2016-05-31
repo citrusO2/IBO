@@ -17,6 +17,8 @@
 
 -export([next/1, get_current_command/1, get_current_step/1]).
 
+
+
 %% function to start execution of an xlib_state
 start(State) ->
     apply_state(State).
@@ -85,7 +87,7 @@ check_xbo_throw(XBO, StepNr, Domain, XlibInfo) ->
     end,
 
     %% check if only certain libraries are used and if the used libraries even contain the right function
-    Libraries = maps:get(libraries, XlibInfo),
+    Libraries = maps:keys(maps:get(libraries, XlibInfo)),
     lists:foreach(fun(#ibo_xboline{library = L, command = C, args = A}) ->
         throw_if_false(lists:member(L, Libraries), "The library " ++ atom_to_list(L) ++ " cannot be used"),
         if
@@ -110,13 +112,15 @@ throw_if_true(Expression,ThrowReason)->
 
 function_exported(Module, Function, Arity) -> %% error in erlang, erlang:function_exported does not work without having the function called before or only after calling :module_info() of the module in question -> crashes tests
     ExportedFunctions = apply(Module, module_info,[exports]),
+    io:format("Exported functions: (~p)~n", [ExportedFunctions]),
     lists:any( fun({F,A}) ->
-        (F =:= Function) and (A =:= Arity)
+        (F =/= module_info) andalso (F =/= xlib_info) andalso (F =:= Function) and (A =:= Arity)  % module_info gets exported automatically but should never be used as an xlib command
     end, ExportedFunctions).
 
 function_exported(Module, Function) ->
     ExportedFunctions = apply(Module, module_info,[exports]),
+    io:format("Exported functions: (~p)~n", [ExportedFunctions]),
     lists:any( fun({F,_A}) ->
-        F =:= Function
+        (F =/= module_info) andalso (F =/= xlib_info) andalso (F =:= Function)    % module_info gets exported automatically but should never be used as an xlib command
     end, ExportedFunctions).
 

@@ -14,6 +14,22 @@
 %% API
 -export([init/1]).
 
+-export([xlib_info/0]).
+
+xlib_info() ->
+    #{
+        init => #{
+            description => <<"Initializes the user's input window for the given step">>,
+            args => [
+                #{
+                    name => <<"Schema">>,
+                    description => <<"The schema for initialization">>,
+                    type => <<"schema">>   % work in progress
+                }
+            ]
+        }
+    }.
+
 % Step which initializes the web interface for the users
 -spec init(State :: #xlib_state{}) -> { Group :: binary(), Taskdetails :: #{} }.
 init(State) ->

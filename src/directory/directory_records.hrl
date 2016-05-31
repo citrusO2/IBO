@@ -22,8 +22,8 @@
 }).
 
 -record(ibo_group, {
-    groupname :: nonempty_string(),
-    groupdescription :: nonempty_string(),
+    name :: nonempty_string(),
+    description :: nonempty_string(),
     parent :: string()
 }).
 

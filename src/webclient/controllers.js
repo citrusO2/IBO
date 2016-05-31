@@ -170,10 +170,37 @@
             $scope.steps = [];
             $scope.startStep = null;
             $scope.xactors = null;
+            $scope.currentStep = null;
+            $scope.groups = null;
+            $scope.newStep = {};
+            $scope.editStep = {};
+            var iid = 0;    //internal running id to link steps
 
+            // get all groups from the directory actor
+            AuthService.getGroups(
+                function(res){
+                    $scope.groups = res.data;
+                }, function(res){
+                    $scope.error = "Could not retrieve usergroups! ";
+                    if(res.status == 500)
+                        $scope.error += "Internal server error (500)";
+                    else if(res.status == 404)
+                        $scope.error += "Cannot find the requested resource (404)";
+                    else if(res.status == 403)
+                        $scope.error += "You do not have access the requested resource (403)";
+                }
+            );
+
+//            $scope.$watch('newStep.domain', function(){
+//                if($scope.newStep.domain != null)
+//                    $scope.newStep.localType = $scope.newStep.domain.info.local;
+//            });
+
+            //retrieve xactor information from the server
             $http.get('/api/repo/domain', AuthService.currentHeader()).then(
                 function(res){
                     $scope.xactors = res.data;
+                    $scope.newStep.domain = $scope.xactors[0];   // preselecting first item in select
                     //console.log(res.data);
                 },function(res){
                     $scope.error = "Could not retrieve running xactors! ";
@@ -186,6 +213,8 @@
                 }
             );
 
+
+            //initialise GUI
             var canvas = $('#modelCanvas');
             var defaultCanvasHeight = canvas.height();
             var graph = new joint.dia.Graph();
@@ -193,10 +222,50 @@
                 el: canvas,
                 width: canvas.width(),
                 height: canvas.height(),
-                gridSize: 1,
+                gridSize: 5,
                 model: graph,
                 restrictTranslate: true, // so that elements cannot move outside the bounding box
             });
+
+            //initialise events on the GUI (need to use $scope.$apply because angular does not know about the changes otherwise)
+            paper.on('cell:pointerclick', function(cellView, evt, x, y) {   // clicked on any cell
+                //set clicked step active and possible last active step normal
+                var Step = getStepFromCellView(cellView);
+                if (Step != null){
+                    if($scope.currentStep != null){
+                        setStepNormal($scope.currentStep);
+                    }
+                    $scope.$apply(function(){
+                        $scope.currentStep = Step;
+                    });
+                    setStepActive(Step);
+                } else if($scope.currentStep != null) {
+                    setStepNormal($scope.currentStep);
+                    $scope.currentStep = null;
+                }
+            });
+            paper.on('cell:pointerdblclick', function(cellView, evt, x, y) {   // clicked on any cell
+                //set clicked step active and possible last active step normal
+                var Step = getStepFromCellView(cellView);
+                if (Step != null){
+                    $scope.currentStep = Step;
+                    $scope.$apply(function(){
+                        $scope.currentStep = Step;
+                        $scope.editCurrentStep();
+                    });
+                }
+            });
+            paper.on('blank:pointerclick', function(evt, x,y){  // clicked anywhere on the empty GUI
+                //set the active step to normal
+                if($scope.currentStep != null) {
+                    setStepNormal($scope.currentStep);
+                    $scope.currentStep = null;
+                    $scope.$apply(function(){
+                        $scope.currentStep = null;
+                    });
+                }
+            });
+
             var uml = joint.shapes.uml;
             var startState = new uml.StartState({
                 position: { x:20  , y: 20 },
@@ -228,34 +297,126 @@
                 paper.setDimensions(canvas.width(), defaultCanvasHeight);
             });
 
-            $scope.newStep = function(Description, Domain, Local){
+            $scope.createNewStep = function(Description, Domain, Local){
                 var Step = {
                    description: Description,
                    domain: Domain,
                    local: Local,
                    commands: [],
-                   umlState: getUmlState(Description, Domain, Local, [])
+                   umlState: getUmlState(Description, Domain, Local, []),
+                   iid: (iid++).toString()
                 };
                 $scope.steps.push(Step);
                 graph.addCell(Step.umlState);
+                $scope.newStep.description = undefined;
+                $scope.newStep.domain = $scope.xactors[0];
+                $scope.newStep.local = null;
                 $('#newStepModal').modal('hide');
             };
 
             $scope.setStartStep = function(Step){
                 $scope.startStep = Step;
                 if (startTransition == null){
-                    startTransition = getUmlTransition(startState.id, Step.umlState.id);
+                    startTransition = getUmlTransition(startState.id, Step.umlState.id, "start");
                     graph.addCell(startTransition);
                 } else {
                     startTransition.set('target', {id: Step.umlState.id});
                 }
             };
 
+            //delete currently selected step
+            $scope.deleteCurrentStep = function(){
+                var r = confirm("Do you really want to delete the current active step?");
+                if(r == true){
+                    if(startTransition != null && startTransition.attributes.target.id == $scope.currentStep.umlState.id){
+                        startTransition.remove();
+                        startTransition = null;
+                    }
+                    $scope.steps.splice(getStepIndex($scope.currentStep), 1);
+                    $scope.currentStep.umlState.remove();
+                    $scope.currentStep = null;
+                    console.log($scope.steps);
+                }
+            };
+
+            //edit currently selected step
+            $scope.editCurrentStep = function(){
+                $scope.editStep = angular.extend({}, $scope.currentStep);  //using editStep instead of currentStep, so that the user can cancel/confirm changes
+                if($scope.currentStep.commands == null){    // init commands
+                    $scope.editStep.commands = [];
+                } else {
+                    $scope.editStep.commands = angular.copy($scope.currentStep.commands);
+                };
+                if($scope.editStep.initCommand == null && $scope.editStep.domain.info.init != null){   //init the init-command
+                    $scope.editStep.initCommand = {
+                        args: [],
+                        command: 'init',
+                        library: $scope.currentStep.domain.info.init,
+                    };
+                    console.log($scope.editStep.initCommand);
+                } else if($scope.editStep.initCommand != null && $scope.editStep.domain.info.init != null){
+                    $scope.editStep.initCommand = angular.copy($scope.currentStep.initCommand);
+                }
+                $('#editStepModal').modal('show');
+//                console.log($scope.currentStep);
+//                console.log($scope.editStep);
+            };
+            $scope.logEvent = function(info, event) {
+                $scope.editStep.commands[event]
+
+                console.log(info);
+                console.log(event);
+            };
+            $scope.saveEditStep = function(Description, Domain, Local){
+                $scope.currentStep.description = Description;
+                $scope.currentStep.local = Local;
+                //$scope.currentStep.commands = null;
+                $scope.currentStep.commands = $scope.editStep.commands;
+                $scope.currentStep.initCommand = $scope.editStep.initCommand;
+
+                updateUmlState($scope.currentStep, Description, Domain, Local);
+                $('#editStepModal').modal('hide');
+            }
+
+            $scope.editStepAddEmptyCommand = function(){
+                if($scope.editStep.commands == null)
+                    $scope.editStep.commands = [];
+                $scope.editStep.commands.push({});
+            }
+
+            $scope.editStepRemoveCommand = function(Item){
+                var index = $scope.editStep.commands.indexOf(Item);
+                $scope.editStep.commands.splice(index, 1);
+            }
+
+            function getStepFromCellView(cellView){
+                for (var i = 0; i < $scope.steps.length; i++) {
+                    if($scope.steps[i].umlState.id == cellView.model.id)
+                        return $scope.steps[i];
+                }
+            }
+
+            function getStepIndex(step){
+                for (var i = 0; i < $scope.steps.length; i++) {
+                    if($scope.steps[i].umlState.id == step.umlState.id)
+                        return i;
+                }
+            }
+
+//            function getXactorByName(name){
+//                for (var i = 0; i < $scope.xactors.length; i++) {
+//                    if($scope.xactors[i].name == name)
+//                        return $scope.xactors[i];
+//                }
+//            }
+
             function getUmlState(Description, Domain, Local, Commands){
+                var umlName = getStateName(Description, Domain, Local);
+                var umlWidth = umlName.length * 8 + 10;
                 return new uml.State({
                     position: { x:100  , y: 100 },
-                    size: { width: 200, height: 100 },
-                    name: getStateName(Description, Domain, Local),
+                    size: { width: umlWidth, height: 100 },
+                    name: umlName,
                     events: ["entry / init()","exit / destroy()"],
                     attrs: {
                         '.uml-state-body': {
@@ -270,8 +431,16 @@
                 });
             }
 
-            function getUmlTransition(IdSource, IdTarget){
-                return new uml.Transition({
+            function updateUmlState(Step, Description, Domain, Local, Commands){
+                var umlName = getStateName(Description, Domain, Local);
+                var umlWidth = umlName.length * 8 + 10;
+                Step.umlState.set('name', umlName);
+                //Step.umlState.set('size', { width: umlWidth, height: 100 });
+                Step.umlState.resize(umlWidth, 100);
+            }
+
+            function getUmlTransition(IdSource, IdTarget, LabelText){
+                var trans = new uml.Transition({
                     source: {id: IdSource},
                     target: {id: IdTarget},
                     attrs: {
@@ -281,20 +450,55 @@
                             'stroke-width': '2',
                             'stroke': '#4b4a67'
                         },
-                        '.marker-vertices': { display : 'none' },   // to disable the direct modification of the links
+                        //'.marker-vertices': { display : 'none' },   // to disable the direct modification of the links
                         '.marker-arrowheads': { display: 'none' },
-                        '.connection-wrap': { display: 'none' },
+                        //'.connection-wrap': { display: 'none' },
                         '.link-tools': { display : 'none' }
+                    }
+                });
+                trans.label(0, {
+                    position: .5,
+                    attrs: {
+                      rect: { fill: '#f5f5f5' },
+                      text: { fill: '#4b4a67', text: LabelText }
+                    }
+                });
+
+                return trans;
+            }
+
+            function getStateName(Description, Domain, Local){
+                Domain = (Domain == null ? {name : undefined } : Domain);
+                //Local = (Local == null ? {name : undefined} : Local);
+                if(Local == null ){
+                    return Description + "@" + Domain.name;
+                } else {
+                    return Description + "@" + Domain.name + "\\" + Local.name ;
+                }
+            }
+
+            function setStepActive(Step){
+                Step.umlState.set('attrs', {
+                    '.uml-state-body': {
+                        fill: 'rgba(255, 255, 0, 0.1)',
+                        stroke: 'rgba(255, 255, 0, 0.5)'
+                    },
+                    '.uml-state-separator': {
+                        stroke: 'rgba(255, 255, 0, 0.4)'
                     }
                 });
             }
 
-            function getStateName(Description, Domain, Local){
-                if(Local == ""){
-                    return Description + "@" + Domain;
-                } else {
-                    return Description + "@" + Local + ":" + Domain;
-                }
+            function setStepNormal(Step){
+                Step.umlState.set('attrs', {
+                    '.uml-state-body': {
+                        fill: 'rgba(48, 208, 198, 0.1)',
+                        stroke: 'rgba(48, 208, 198, 0.5)'
+                    },
+                    '.uml-state-separator': {
+                        stroke: 'rgba(48, 208, 198, 0.4)'
+                    }
+                });
             }
         }
     ]);

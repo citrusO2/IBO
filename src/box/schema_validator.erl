@@ -63,6 +63,16 @@ validate_keyvalue(?MINLENGTH, Length, _CMap) ->
 validate_keyvalue(?MAXLENGTH, Length, _CMap) ->
     ?MUSTBEINTEGER(Length, "maxlength"),
     ?ATLEASTZEROLENGTH(Length, "maxlength");
+validate_keyvalue(?MINIMUM, Size, _CMap) ->
+    ?MUSTBENUMBER(Size, "minimum");
+validate_keyvalue(?MAXIMUM, Size, _CMap) ->
+    ?MUSTBENUMBER(Size, "maximum");
+validate_keyvalue(?EXCLUSIVEMINIMUM, Bool, CMap)->
+    ?MUSTBEBOOLEAN(Bool, "boolean"),
+    ?CT("exlusiveminimum requires minimum to be present", CMap, maps:is_key(?MINIMUM));
+validate_keyvalue(?EXCLUSIVEMAXIMUM, Bool, CMap)->
+    ?MUSTBEBOOLEAN(Bool, "boolean"),
+    ?CT("exlusivemaximum requires maximum to be present", CMap, maps:is_key(?MAXIMUM));
 validate_keyvalue(Key, Map, _CMap) when is_map(Map) ->
     validate_map(Map, Key).
 
@@ -113,10 +123,14 @@ validate(Schema, Value) when is_binary(Value) ->
     ?VALIDATE_FIELD_MAXLENGTH(Schema, Value);
 validate(Schema, Value) when is_integer(Value) ->
     ?VALIDATE_FIELD_TYPE_INTEGER_OR_NUMBER(Schema, Value),
-    ?VALIDATE_FIELD_ENUM(Schema, Value);
+    ?VALIDATE_FIELD_ENUM(Schema, Value),
+    ?VALIDATE_FIELD_MINIMUM(Schema, Value),
+    ?VALIDATE_FIELD_MAXIMUM(Schema, Value);
 validate(Schema, Value) when is_number(Value) ->
     ?VALIDATE_FIELD_TYPE_NUMBER(Schema, Value),
-    ?VALIDATE_FIELD_ENUM(Schema, Value);
+    ?VALIDATE_FIELD_ENUM(Schema, Value),
+    ?VALIDATE_FIELD_MINIMUM(Schema, Value),
+    ?VALIDATE_FIELD_MAXIMUM(Schema, Value);
 validate(Schema, Value) when is_boolean(Value) ->
     ?VALIDATE_FIELD_TYPE_BOOLEAN(Schema, Value),
     ?VALIDATE_FIELD_ENUM(Schema, Value);

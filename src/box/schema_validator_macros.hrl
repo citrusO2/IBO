@@ -23,6 +23,9 @@
 -define(VALIDATE_FIELD_MINLENGTH_TEXT, "field \"minlength\" requires the string to have a certain length").
 -define(VALIDATE_FIELD_MAXLENGTH_TEXT, "field \"maxlength\" requires the string to have a certain length").
 
+-define(VALIDATE_FIELD_MAXIMUM_TEXT, "field \"maximum\" requires the number to have a certain maximum value").
+-define(VALIDATE_FIELD_MINIMUM_TEXT, "field \"minimum\" requires the number to have a certain minimum value").
+
 -define(ATLEASTONE(List, VariableName), ?CT(VariableName ++ ?ATLEASTONE_TEXT, List, erlang:length(List) >= 1)).
 -define(UNIQUE(List, VariableName), ?CT(VariableName ++ ?UNIQUE_TEXT, List, erlang:length(List) == sets:size(sets:from_list(List)))).
 -define(ALLOFTYPEBINARY(List, VariableName), ?CT(VariableName ++ ?ALLOFTYPELIST_TEXT, List, lists:all(fun(E) ->
@@ -32,6 +35,8 @@
 -define(MUSTBELIST(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "list", is_list(Var))).
 -define(MUSTBEBINARY(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "binary", is_binary(Var))).
 -define(MUSTBEINTEGER(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "integer", is_integer(Var))).
+-define(MUSTBENUMBER(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "number", is_number(Var))).
+-define(MUSTBEBOOLEAN(Var, VariableName), ?MUSTBETYPE(Var, VariableName, "boolean", is_boolean(Var))).
 -define(MUSTBEPRIMITIVETYPE(Type), ?MUSTBETYPE(Type, "type", "primitive", lists:member(Type, [?OBJECT, ?STRING, ?NUMBER, ?BOOLEAN, ?ARRAY, ?NULL, ?INTEGER]))).
 
 -define(ATLEASTZEROLENGTH(Var, VariableName), ?CT(VariableName ++ ?ATLEASTZEROLENGTH_TEXT, Var, Var >= 0)).
@@ -60,6 +65,14 @@
 ))).
 -define(VALIDATE_FIELD_MAXLENGTH(Schema, Variable), ?CT(?VALIDATE_FIELD_MAXLENGTH_TEXT, {maps:get(?MAXLENGTH, Schema), Variable}, not (maps:is_key(?MAXLENGTH, Schema)) orelse (
     maps:get(?MAXLENGTH, Schema) >= erlang:length(binary:bin_to_list(Variable))
+))).
+-define(VALIDATE_FIELD_MAXIMUM(Schema, Variable), ? CT(?VALIDATE_FIELD_MAXIMUM_TEXT, {maps:get(?MAXIMUM, Schema), Variable}, not (maps:is_key(?MAXIMUM, Schema)) orelse (
+    (not (maps:is_key(?EXCLUSIVEMAXIMUM, Schema)) andalso maps:get(?MAXIMUM, Schema) >= Variable) orelse
+    ((maps:is_key(?EXCLUSIVEMAXIMUM, Schema)) andalso maps:get(?MAXIMUM, Schema) > Variable)
+))).
+-define(VALIDATE_FIELD_MINIMUM(Schema, Variable), ? CT(?VALIDATE_FIELD_MINIMUM_TEXT, {maps:get(?MINIMUM, Schema), Variable}, not (maps:is_key(?MINIMUM, Schema)) orelse (
+    (not (maps:is_key(?EXCLUSIVEMINIMUM, Schema)) andalso maps:get(?MINIMUM, Schema) =< Variable) orelse
+    ((maps:is_key(?EXCLUSIVEMINIMUM, Schema)) andalso maps:get(?MINIMUM, Schema) < Variable)
 ))).
 
 -define(VALIDATE_MATCHING_PROPERTIES(Schema, Variable),
@@ -110,8 +123,8 @@
 %%      if "exclusiveMaximum" has boolean value true, the instance is valid if it is strictly lower than the value of "maximum".
 %% 5.1.2.3.  Default value
 %%      "exclusiveMaximum", if absent, may be considered as being present with boolean value false.
--define(MAXIMUM,            <<"maximum">>).             % NOT IMPLEMENTED YET
--define(EXCLUSIVEMAXIMUM,   <<"exclusiveMaximum">>).    % NOT IMPLEMENTED YET
+-define(MAXIMUM,            <<"maximum">>).
+-define(EXCLUSIVEMAXIMUM,   <<"exclusiveMaximum">>).
 
 %% 5.1.3.  minimum and exclusiveMinimum
 %% 5.1.3.1.  Valid values
@@ -123,8 +136,8 @@
 %%      if "exclusiveMinimum" is present and has boolean value true, the instance is valid if it is strictly greater than the value of "minimum".
 %% 5.1.3.3.  Default value
 %%      "exclusiveMinimum", if absent, may be considered as being present with boolean value false.
--define(MINIMUM,            <<"minimum">>).             % NOT IMPLEMENTED YET
--define(EXCLUSIVEMINIMUM,   <<"exclusiveMinimum">>).    % NOT IMPLEMENTED YET
+-define(MINIMUM,            <<"minimum">>).
+-define(EXCLUSIVEMINIMUM,   <<"exclusiveMinimum">>).
 
 %% 5.2.  Validation keywords for strings
 %% 5.2.1.  maxLength

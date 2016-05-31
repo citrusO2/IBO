@@ -13,7 +13,7 @@
 -include("handler_macros.hrl").
 
 -record(state, {
-    type :: undefined | self | other,
+    type :: undefined | self | other | group,
     ibo_user :: #ibo_user{} | undefined,
     directory_server_name :: binary()
 }).
@@ -44,14 +44,22 @@ is_authorized(Req, State) ->
     end.
 
 forbidden(Req, State) ->
-    case cowboy_req:binding(box_path, Req) of
-        undefined ->    % = no additional path given
-            {false, Req, State#state{type = self}};
-        _UserID ->
-            {true, Req, State#state{type = other}} % TODO: implement retrieving other user
-        % check if the user is allowed to retrieve other users
-        % if not found -> send err404 and return {stop,Req,State}
-        % if no access -> return false, otherwise true
+    case cowboy_req:binding(dir_type, Req) of
+        <<"user">> ->
+            case cowboy_req:binding(box_path, Req) of
+                undefined ->    % = no additional path given
+                    {false, Req, State#state{type = self}};
+                _UserID ->
+                    {true, Req, State#state{type = other}} % TODO: implement retrieving other user
+                % check if the user is allowed to retrieve other users
+                % if not found -> send err404 and return {stop,Req,State}
+                % if no access -> return false, otherwise true
+            end;
+        <<"group">> ->
+            {false, Req, State#state{type = group}};
+        _Else ->
+            cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"type of directory request has to be user or group\"}">>, Req),
+            {stop, Req, State}
     end.
 
 %% ------------------------
@@ -63,4 +71,9 @@ content_types_provided(Req, State) ->
 
 to_json(Req, State) when State#state.type =:= self ->
     Body = jsx:encode(?record_to_tuplelist(ibo_user,State#state.ibo_user)),
+    {Body, Req, State};
+to_json(Req, State) when State#state.type =:= group ->
+    Groups = directory_server:get_all_groups(State#state.directory_server_name),
+    PreparedGroups = lists:map(fun(Element) -> ?record_to_tuplelist(ibo_group, Element) end, Groups),
+    Body = jsx:encode(PreparedGroups),
     {Body, Req, State}.

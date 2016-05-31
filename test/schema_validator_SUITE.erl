@@ -100,11 +100,8 @@ validate_schema_data_test(_Config) ->
     {error, {"field \"type\" requires the type object", {ResSchema9, Value9}}} = schema_validator:validate_data(?TESTSCHEMA1, Data9).
 
 validate_json_schema_testsuite(_Config) ->
-    exec_json_test("required.json"),
-    exec_json_test("type.json"),
-    exec_json_test("enum.json"),
-    exec_json_test("minLength.json"),
-    exec_json_test("maxLength.json").
+    {ok, Files} = file:list_dir("./../../test/json-testsuite/"),
+    lists:foreach(fun(File) -> exec_json_test(File) end, Files).    %otherwise badarith error
 
 exec_json_test(FileName) ->
     Path = "./../../test/json-testsuite/",

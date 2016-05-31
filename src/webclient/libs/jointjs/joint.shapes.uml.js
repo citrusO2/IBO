@@ -30,7 +30,7 @@ joint.shapes.uml.Class = joint.shapes.basic.Generic.extend({
             '.uml-class-methods-rect': { 'stroke': 'black', 'stroke-width': 2, 'fill': '#2980b9' },
 
             '.uml-class-name-text': {
-                'ref': '.uml-class-name-rect', 'ref-y': .5, 'ref-x': .5, 'text-anchor': 'middle', 'y-alignment': 'middle', 'font-weight': 'bold',
+                'ref': '.uml-class-name-rect', 'ref-y': .5, 'ref-x': 5, 'text-anchor': 'middle', 'y-alignment': 'middle', 'font-weight': 'bold',
                 'fill': 'black', 'font-size': 12, 'font-family': 'Times New Roman'
             },
             '.uml-class-attrs-text': {
@@ -204,7 +204,7 @@ joint.shapes.uml.State = joint.shapes.basic.Generic.extend({
                 'stroke': '#bdc3c7', 'stroke-width': 2
             },
             '.uml-state-name': {
-                'ref': '.uml-state-body', 'ref-x': .5, 'ref-y': 5, 'text-anchor': 'middle',
+                'ref': '.uml-state-body', 'ref-x': 5, 'ref-y': 5, //'text-anchor': 'middle',
                 'fill': '#000000', 'font-family': 'Courier New', 'font-size': 14
             },
             '.uml-state-events': {

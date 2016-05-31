@@ -203,3 +203,81 @@ body {
  .bs-callout-info h4 {
      color: #5bc0de;
  }
+
+ /*
+ * for dragable list
+ */
+ul[dnd-list],
+ul[dnd-list] > li {
+    position: relative;
+}
+
+ul[dnd-list] {
+    min-height: 42px;
+    padding-left: 0px;
+}
+
+ul[dnd-list] .dndDraggingSource {
+    display: none !important;
+}
+
+ul[dnd-list] .dndPlaceholder {
+    display: block;
+    background-color: #ddd;
+    min-height: 56px;
+    z-index: 1001;
+}
+ul[dnd-list] .dndPlaceholder:after {
+    display: block;
+    background-color: #ddd;
+    min-height: 56px;
+    /*z-index: 1001;*/
+}
+
+ul[dnd-list] li {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-top-right-radius: 4px;
+    border-top-left-radius: 4px;
+    display: block;
+    padding: 10px 15px;
+    margin-bottom: -1px;
+}
+
+ul[dnd-list] li:not(:last-child):not(.dndPlaceholder):after { /* the small arrow */
+    content: "";
+    z-index: 1000;
+    width:15px;
+    height:15px;
+    background: white;
+	-ms-transform:rotate(45deg); /* IE 9 */
+	-webkit-transform:rotate(45deg); /* Safari and Chrome */
+	transform:rotate(45deg);
+    position:absolute;
+    bottom:-8px;
+    left: 25px;
+    margin-left: -12px;
+    -webkit-box-shadow: 1px 1px 1px 0px rgba(50, 50, 50, 0.25);
+    -moz-box-shadow:    1px 1px 1px 0px rgba(50, 50, 50, 0.25);
+    box-shadow:         1px 1px 1px 0px rgba(50, 50, 50, 0.25);
+}
+
+ul[dnd-list] li.selected {
+    background-color: #dff0d8;
+    color: #3c763d;
+}
+
+ul[dnd-list] li dnd-nodrag {
+  display: block;
+  padding: 0;
+}
+
+ul[dnd-list] dnd-nodrag .form-inline{
+    margin-left: 25px;
+}
+
+.dnd-handle-element {
+  cursor: move;
+  position: absolute;
+  top: 16px;
+}

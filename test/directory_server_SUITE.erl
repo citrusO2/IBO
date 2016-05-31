@@ -12,8 +12,8 @@
 -include("../src/directory/directory_records.hrl").
 -define(USER, #ibo_user{username = <<"ff">>, firstname = <<"Fabian">>, lastname = <<"Froelich">>}).
 -define(NEWUSER, #ibo_user{username = <<"dd">>, firstname = <<"Doris">>, lastname = <<"Dührwald">>, groups = [<<"marketing">>]}).
--define(GROUP, #ibo_group{groupname = <<"ACME_Corporation">>, groupdescription = <<"This should be the root group">>}).
--define(NEWGROUP, #ibo_group{groupname = <<"Marketing">>, groupdescription = <<"Group for the Unit Marketing">>, parent = <<"ACME_Corporation">>}).
+-define(GROUP, #ibo_group{name = <<"ACME_Corporation">>, description = <<"This should be the root group">>}).
+-define(NEWGROUP, #ibo_group{name = <<"Marketing">>, description = <<"Group for the Unit Marketing">>, parent = <<"ACME_Corporation">>}).
 -define(DIRECTORY_NAME, <<"DIRECTORY1">>).
 -define(DIRECTORY_ARGS, #{name => ?DIRECTORY_NAME}).
 
@@ -105,7 +105,7 @@ search_user_test(_Config) ->
 %%%===================================================================
 get_group_test(_Config) ->
     Record1 = ?GROUP,
-    Record2 = directory_server:get_group(?DIRECTORY_NAME, Record1#ibo_group.groupname),
+    Record2 = directory_server:get_group(?DIRECTORY_NAME, Record1#ibo_group.name),
     ct_helper:print_var("Record1", Record1),
     ct_helper:print_var("Record2", Record2),
     true = Record1 =:= Record2,
@@ -120,7 +120,7 @@ get_group_fail_test(_Config) ->
 write_group_test(_Config) ->
     Record1 = ?NEWGROUP,
     ok = directory_server:write_group(?DIRECTORY_NAME, Record1),
-    Record2 = directory_server:get_group(?DIRECTORY_NAME, Record1#ibo_group.groupname),
+    Record2 = directory_server:get_group(?DIRECTORY_NAME, Record1#ibo_group.name),
     true = Record1 =:= Record2,
     ok.
 

@@ -1,0 +1,15 @@
+<div class="form-group">
+    <label class="sr-only" for="commandLib{{$index}}">Library of the command</label>
+    <select class="form-control" id="commandLib{{$index}}" data-ng-model="command.library" data-ng-options="libname for (libname, props) in editStep.domain.info.libraries"></select>
+</div>
+<div class="form-group">
+    <label class="sr-only" for="commandCom{{$index}}">The command from the selected library</label>
+    <select data-ng-change="command.args = []" data-ng-disabled="command.library == null" class="form-control" id="commandCom{{$index}}" data-ng-model="command.command" data-ng-options="comname for (comname, props) in command.library"></select>
+</div>
+<div class="form-group" data-ng-repeat="arg in command.command.args">
+    <label class="sr-only" for="commandArg{{$parent.$index}}{{arg.name}}">The {{$index}}. argument ({{arg.name}}) from the selected library</label>
+    <select data-ng-if="arg.type == 'step'" class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]" data-ng-options="step.description for step in steps"></select>
+    <input data-ng-if="arg.type == 'integer'" type="number"  class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]">
+    <input data-ng-if="arg.type == 'schema'" type="text"  class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]">
+    <input data-ng-if="arg.type == 'condition'" type="text"  class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]">
+</div>

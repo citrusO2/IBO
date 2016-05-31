@@ -71,7 +71,10 @@ get_webinit(Box, XBOid) ->   % first ibo_xboline in ibo_xbostep to initialize th
 
 %% information which libraries can be used by the iactor and which library is used for initialisation.
 xlib_info() ->
-    #{init => xlib_box, libraries => [xlib_basic, xlib_box]}.
+    #{init => xlib_box, local => group, libraries => #{
+        xlib_basic => xlib_basic:xlib_info(),
+        xlib_box => xlib_box:xlib_info()
+    }}.
 
 %%%===================================================================
 %%% gen_server callbacks

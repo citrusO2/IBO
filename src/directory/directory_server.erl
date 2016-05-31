@@ -25,7 +25,7 @@
 %% API ---------------------------------------------------------------
 -export([start_link/1, stop/1,
     get_user/2, search_user/2,
-    get_group/2, write_group/2, search_group/2,
+    get_group/2, write_group/2, search_group/2, get_all_groups/1,
     create_user/3, update_user/3, get_user_info/3]).
 
 %% starts a new global directory server with the given name as the global name
@@ -63,6 +63,11 @@ write_group(Directory, Group) ->
 -spec search_group(Directory :: binary(), SearchString :: binary()) -> [#ibo_group{}] | [] | {error, term()}.
 search_group(Directory, SearchString) ->
     gen_server:call({global, Directory}, {search_group, SearchString}).
+
+%% syntactic sugar to retrieve all groups via search_group
+-spec get_all_groups(Directory :: binary()) -> [#ibo_group{}] | [] | {error, term()}.
+get_all_groups(Directory) ->
+    search_group(Directory, <<"">>).
 
 %%-------------------------------------
 % Higher API functions -- TODO: remove lower functions with higher ones

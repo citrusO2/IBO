@@ -41,7 +41,8 @@ init(#{directory := _Directory, box := _Box, repo := _Repo, name := Name} = Args
         {'_', [
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
             {"/api/box/[:box_path]", box_handler, Args},
-            {"/api/directory/[:user_path]", directory_handler, Args},
+            {"/api/directory/[:dir_type]", directory_handler, Args},
+            {"/api/directory/[:dir_type]/[:user_path]", directory_handler, Args},
             {"/api/repo/[:repo_type]", repo_handler, Args},
             {"/api/repo/[:repo_type]/[:repo_path]", repo_handler, Args},
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}

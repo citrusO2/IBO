@@ -70,9 +70,11 @@ forbidden(Req, State) ->
             end;
         <<"domain">> ->
             {false, Req, State#state{type = domain}};
-        Else ->
-            io:format("Error of repo_type ~p~n", [Else]),
-            {true, Req, State#state{type = error}}
+        _Else ->
+%%            io:format("Error of repo_type ~p~n", [Else]),
+%%            {true, Req, State#state{type = error}}
+            cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"type of repo request has to be process or domain\"}">>, Req),
+            {stop, Req, State}
     end.
 
 

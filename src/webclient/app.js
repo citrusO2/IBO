@@ -1,7 +1,7 @@
 "use strict";
 (function(){
 
-    var iboApp =  angular.module('iboApp', ['ngRoute','iboControllers', 'schemaForm']);
+    var iboApp =  angular.module('iboApp', ['ngRoute','iboControllers', 'schemaForm', 'dndLists']);
 
     iboApp.config(['$routeProvider',
         function($routeProvider) {
@@ -36,6 +36,7 @@
         function($http, $location) {
             var currentUser = null;
             var currentHeader = null;
+            var currentGroups = null;
 
             function createHeader(username, password){
                 currentHeader = {headers:  {
@@ -50,7 +51,7 @@
                 login: function(username, password, success, error) {
                     createHeader(username, password);
 
-                    $http.get('/api/directory', currentHeader).then(
+                    $http.get('/api/directory/user', currentHeader).then(
                         function(res){
                             currentUser = res.data;
                             success = success || $.noop;
@@ -67,7 +68,20 @@
                 },
                 isLoggedIn: function() { return currentUser !== null; },
                 currentUser: function() { return currentUser; },
-                currentHeader: function() { return currentHeader; }
+                currentHeader: function() { return currentHeader; },
+                currentGroups: function() { return currentGroups; },
+                getGroups: function(success, error){
+                    $http.get('/api/directory/group', this.currentHeader()).then(
+                        function(res){
+                            currentGroups = res.data;
+                            success = success || $.noop;
+                            success(res);
+                        }, function(res){
+                            error = error || $.noop;
+                            error(res);
+                        }
+                    )
+                }
             };
         }
     ]);
