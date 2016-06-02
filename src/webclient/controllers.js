@@ -174,6 +174,20 @@
             $scope.groups = null;
             $scope.newStep = {};
             $scope.editStep = {};
+            $scope.schema = {
+                variables: [],
+                variablesceletons: [    // used to generate empty schema variables with the given default values
+                    {
+                        element: 'input',
+                        required: true,
+                        type: 'string'
+                    },{
+                        element: 'select',
+                        required: true,
+                        type: 'string'
+                    }
+                ]
+            };
             var iid = 0;    //internal running id to link steps
 
             // get all groups from the directory actor
@@ -304,6 +318,7 @@
                    local: Local,
                    commands: [],
                    umlState: getUmlState(Description, Domain, Local, []),
+                   umlTransitions : [],
                    iid: (iid++).toString()
                 };
                 $scope.steps.push(Step);
@@ -361,12 +376,6 @@
 //                console.log($scope.currentStep);
 //                console.log($scope.editStep);
             };
-            $scope.logEvent = function(info, event) {
-                $scope.editStep.commands[event]
-
-                console.log(info);
-                console.log(event);
-            };
             $scope.saveEditStep = function(Description, Domain, Local){
                 $scope.currentStep.description = Description;
                 $scope.currentStep.local = Local;
@@ -387,6 +396,26 @@
             $scope.editStepRemoveCommand = function(Item){
                 var index = $scope.editStep.commands.indexOf(Item);
                 $scope.editStep.commands.splice(index, 1);
+            }
+
+            $scope.verifyDuplicateNames = function(){
+                var sorted, i, isDuplicate;
+                sorted = $scope.schema.variables.concat().sort(function (a, b) {
+                    if (a.name > b.name) return 1;
+                    if (a.name < b.name) return -1;
+                    return 0;
+                });
+                for(i = 0; i < $scope.schema.variables.length; i++) {
+                    isDuplicate = ((sorted[i-1] && sorted[i-1].name == sorted[i].name) || (sorted[i+1] && sorted[i+1].name == sorted[i].name));
+                    sorted[i].form.varName.$setValidity('duplicate',!isDuplicate);
+                }
+            }
+
+            function getStepByIID(iid){
+                for(var i = 0; i < $scope.steps.length; i++){
+                    if($scope.steps[i].iid == iid)
+                        return $scope.steps[i];
+                }
             }
 
             function getStepFromCellView(cellView){
@@ -413,11 +442,12 @@
             function getUmlState(Description, Domain, Local, Commands){
                 var umlName = getStateName(Description, Domain, Local);
                 var umlWidth = umlName.length * 8 + 10;
+
                 return new uml.State({
                     position: { x:100  , y: 100 },
-                    size: { width: umlWidth, height: 100 },
+                    size: { width: umlWidth, height: 40 },
                     name: umlName,
-                    events: ["entry / init()","exit / destroy()"],
+                    events: [],
                     attrs: {
                         '.uml-state-body': {
                             fill: 'rgba(48, 208, 198, 0.1)',
@@ -431,18 +461,117 @@
                 });
             }
 
-            function updateUmlState(Step, Description, Domain, Local, Commands){
+            function getMaxLengthOfStrings(list){
+                var length = list[0].length;
+                for(var i = 1; i < list.length; i++){
+                    if(length < list[i].length)
+                        length = list[i].length;
+                }
+                if(arguments.length > 1){
+                    for(var i = 1; i < arguments.length; i++)
+                        if(length < arguments[i].length)
+                            length = arguments[i].length;
+                }
+                return length;
+            }
+
+            function commandsToListOfStrings(commands, initCommand){
+                var list = [];
+                if(initCommand != null)
+                    list.push(commandToString(initCommand));
+                for(var i = 0; i < commands.length; i++)
+                    list.push(commandToString(commands[i]));
+                return list;
+            }
+
+            function commandToString(Command){
+                var s = Command.library + "->" + Command.command;
+                if(Command.args == null || Command.args.length == 0)
+                    return s;
+                return s + "->" + Command.args.join(",");
+            }
+
+            function updateUmlState(Step, Description, Domain, Local){
+                //update text
                 var umlName = getStateName(Description, Domain, Local);
-                var umlWidth = umlName.length * 8 + 10;
+                var commandList = commandsToListOfStrings(Step.commands, Step.initCommand);
                 Step.umlState.set('name', umlName);
+                Step.umlState.set('events', commandList);
+
+                //update size
+                var umlWidth = getMaxLengthOfStrings(commandList, umlName) * 8 + 10;
+                var umlHeight = 30 + commandList.length * 14;
                 //Step.umlState.set('size', { width: umlWidth, height: 100 });
-                Step.umlState.resize(umlWidth, 100);
+                Step.umlState.resize(umlWidth, umlHeight);
+
+                //update outgoing transitions (manual update and not simple delete/add to keep manual set arrow points)
+                //1. detect changes, update/insert transitions accordingly
+                var checked = []
+                for(var i = 0; i < Step.commands.length; i++){
+                    if(Step.commands[i].library == 'xlib_basic' && Step.commands[i].command == 'send' && Step.commands[i].args != null && Step.commands[i].args[0] != null){
+                        var transLabel = "line" + (Step.initCommand == null ? i+1 : i+2) +":send";
+                        //check if transition already exists
+                        var oldTransIndex = getUmlSendTransitionIndexByCommand(Step.commands[i], Step.umlTransitions);
+                        if(oldTransIndex != -1){
+
+                            Step.umlTransitions[oldTransIndex].label(0, {attrs: { text: { text: transLabel}}}); //only try to update label
+                            checked.push(oldTransIndex);
+                        } else{
+                            var destIID = Step.commands[i].args[0];
+                            var destUID = getStepByIID(destIID).umlState.id;
+                            var trans = getUmlTransition(Step.umlState.id, destUID, transLabel);
+                            graph.addCell(trans);
+                            checked.push(Step.umlTransitions.length);
+                            Step.umlTransitions.push(trans);
+                        }
+                    }
+                    if(Step.commands[i].library == 'xlib_basic' && Step.commands[i].command == 'finish'){
+                        var transLabel = "line" + (Step.initCommand == null ? i+1 : i+2) +":finish";
+                        var oldTransIndex = getUmlFinishTransitionIndexByCommand(Step.commands[i], Step.umlTransitions);
+                        if(oldTransIndex != -1){
+                            Step.umlTransitions[oldTransIndex].label(0, {attrs: { text: { text: transLabel}}});
+                            checked.push(oldTransIndex);
+                        }
+                        else{
+                            var trans = getUmlTransition(Step.umlState.id, endState.id, transLabel);
+                            graph.addCell(trans);
+                            checked.push(Step.umlTransitions.length);
+                            Step.umlTransitions.push(trans);
+                        }
+                    }
+                }
+                //2. remove transitions which are not used any more
+                for(var i = 0; i < Step.umlTransitions.length; i++)
+                    if( checked.indexOf(i) == -1 ){
+                        Step.umlTransitions[i].remove();
+                        Step.umlTransitions.splice(i, 1);
+                    }
+            }
+
+            function getUmlSendTransitionIndexByCommand(Command, umlTransitions){
+                for(var i = 0; i < umlTransitions.length; i++){
+                    var destIID = Command.args[0];
+                    var destUID = getStepByIID(destIID).umlState.id;
+                    if( destUID == umlTransitions[i].attributes.target.id )
+                        return i;
+                }
+                return -1;
+            }
+
+            function getUmlFinishTransitionIndexByCommand(Command, umlTransitions){
+                for(var i = 0; i < umlTransitions.length; i++){
+                    if( endState.id == umlTransitions[i].attributes.target.id )
+                        return i;
+                }
+                return -1;
             }
 
             function getUmlTransition(IdSource, IdTarget, LabelText){
                 var trans = new uml.Transition({
                     source: {id: IdSource},
                     target: {id: IdTarget},
+                    //router: {name: 'orthogonal'},
+                    connector: {name: 'rounded'},
                     attrs: {
                         '.connection' : {
                             'fill': 'none',

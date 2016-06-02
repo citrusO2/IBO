@@ -217,7 +217,8 @@ ul[dnd-list] {
     padding-left: 0px;
 }
 
-ul[dnd-list] .dndDraggingSource {
+ul[dnd-list].commandlist .dndDraggingSource,
+ul[dnd-list].schemavariablelist .dndDraggingSource{
     display: none !important;
 }
 
@@ -234,7 +235,7 @@ ul[dnd-list] .dndPlaceholder:after {
     /*z-index: 1001;*/
 }
 
-ul[dnd-list] li {
+ul[dnd-list] > li {
     background-color: #fff;
     border: 1px solid #ddd;
     border-top-right-radius: 4px;
@@ -244,7 +245,7 @@ ul[dnd-list] li {
     margin-bottom: -1px;
 }
 
-ul[dnd-list] li:not(:last-child):not(.dndPlaceholder):after { /* the small arrow */
+ul[dnd-list].commandlist > li:not(:last-child):not(.dndPlaceholder):after { /* the small arrow */
     content: "";
     z-index: 1000;
     width:15px;
@@ -262,22 +263,62 @@ ul[dnd-list] li:not(:last-child):not(.dndPlaceholder):after { /* the small arrow
     box-shadow:         1px 1px 1px 0px rgba(50, 50, 50, 0.25);
 }
 
-ul[dnd-list] li.selected {
+ul[dnd-list] > li.selected {
     background-color: #dff0d8;
     color: #3c763d;
 }
 
-ul[dnd-list] li dnd-nodrag {
+ul[dnd-list] > li dnd-nodrag {
   display: block;
   padding: 0;
 }
 
-ul[dnd-list] dnd-nodrag .form-inline{
+ul[dnd-list] dnd-nodrag > .form-inline{
     margin-left: 25px;
 }
 
 .dnd-handle-element {
-  cursor: move;
-  position: absolute;
-  top: 16px;
+    cursor: move;
+    position: absolute;
+}
+
+.commandlist .dnd-handle-element{
+    top: 16px;
+}
+
+.schemavariablelist .dnd-handle-element{
+    top: 13px;
+}
+
+.schemasceletonlist .dnd-handle-element {
+    top: 10px;
+}
+
+.schemavariable{
+    margin-left: 25px;
+    border-left: solid 1px #ddd;
+    padding-left: 12px
+}
+
+.schemavariable-title{
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    transform: translate(-50%,-50%) rotate(-90.0deg);
+}
+
+.schemavariable-placeholder{
+    position: absolute;
+    margin-top: 10px;
+    top: 50%;
+    left: 50%;
+    height: 56px;
+    line-height: 56px;
+    transform: translate(-50%, -50%);
+}
+
+.schemavariable-delete-btn{
+    position: absolute;
+    right: 16px;
+    z-index: 1000;
 }

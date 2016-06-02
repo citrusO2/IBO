@@ -1,0 +1,34 @@
+<div class="modal fade" id="newStepModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form name="newStepForm">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="newStepModalLabel">Create new step</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="newStepDescription">Name/Description of the step</label>
+                        <input required data-ng-model="newStep.description" type="text" class="form-control" id="newStepDescription" placeholder="Name/Description">
+                    </div>
+                    <div class="form-group">
+                        <label for="newStepDomain">Domain of the step</label>
+                        <select required data-ng-model="newStep.domain" class="form-control" id="newStepDomain" data-ng-options="actor.name for actor in xactors track by actor.name" >
+                            <!--<option data-ng-repeat="actor in xactors">{{actor.name}}</option>-->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="newStepLocal">Local of the step</label>
+                        <input data-ng-hide="newStep.domain.info.local == 'group'" data-ng-model="newStep.local" type="text" class="form-control" id="newStepLocal" placeholder="Local">
+                        <select data-ng-show="newStep.domain.info.local == 'group'" data-ng-model="newStep.local" class="form-control" id="newStepLocalSelect" data-ng-options="group.description for group in groups" >
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button data-ng-disabled="newStepForm.$invalid" type="submit" class="btn btn-primary" data-ng-click="createNewStep(newStep.description, newStep.domain, newStep.local)">Add to template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

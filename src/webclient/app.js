@@ -1,7 +1,7 @@
 "use strict";
 (function(){
 
-    var iboApp =  angular.module('iboApp', ['ngRoute','iboControllers', 'schemaForm', 'dndLists']);
+    var iboApp =  angular.module('iboApp', ['ngRoute','iboControllers', 'schemaForm', 'dndLists', 'ngTagsInput']);
 
     iboApp.config(['$routeProvider',
         function($routeProvider) {
