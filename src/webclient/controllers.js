@@ -164,8 +164,8 @@
         }
     ]);
 
-    iboControllers.controller('NewProcTemplCtrl', ['$scope', '$routeParams','$http','AuthService',
-        function($scope, $routeParams, $http, AuthService) {
+    iboControllers.controller('NewProcTemplCtrl', ['$scope', '$routeParams','$http','AuthService', 'SchemaV4Service',
+        function($scope, $routeParams, $http, AuthService, SchemaV4Service) {
             $scope.error = null;
             $scope.steps = [];
             $scope.startStep = null;
@@ -174,21 +174,11 @@
             $scope.groups = null;
             $scope.newStep = {};
             $scope.editStep = {};
-            $scope.schema = {
-                variables: [],
-                variablesceletons: [    // used to generate empty schema variables with the given default values
-                    {
-                        element: 'input',
-                        required: true,
-                        type: 'string'
-                    },{
-                        element: 'select',
-                        required: true,
-                        type: 'string'
-                    }
-                ]
-            };
+            $scope.schema = getEmptySchema();
+            $scope.condition = {};
+            $scope.vars = {};
             var iid = 0;    //internal running id to link steps
+            var vid = 0;    //internal running id to link variables
 
             // get all groups from the directory actor
             AuthService.getGroups(
@@ -376,6 +366,56 @@
 //                console.log($scope.currentStep);
 //                console.log($scope.editStep);
             };
+            $scope.editCurrentSchema = function(Args, Index){
+                $scope.schema = angular.merge(getEmptySchema(), Args[Index]);   //initialise schema (=deep copy);
+                $scope.schema.ref = { args: Args, index: Index };               //store reference to argument for saving later
+                $('#schemaModal').modal('show');
+            };
+            $scope.editCurrentCondition = function(Args, argIndex){
+                updateStepVariables();
+                $scope.condition = angular.merge({}, Args[argIndex]);       //initialise condition (=deep copy);
+                $scope.condition.ref = { args: Args, index: argIndex };   //store reference to argument for saving later
+                $('#conditionModal').modal('show');
+            };
+
+            $scope.previewCurrentSchema = function(Schema){
+                var V4schema = SchemaV4Service.createSchema(Schema);
+                $scope.schemaPreview = {
+                    schema: V4schema,
+                    form: [ "*", {type: "submit", title: "Send"}],
+                    model: {},
+                    onSubmit: function(form){
+                        $scope.$broadcast('schemaFormValidate');
+                        if(form.$valid){
+                            window.alert("Form was successfully validated");
+                        }
+                    }
+                };
+                $('#schemaPreviewModal').modal('show');
+            };
+            $scope.saveCurrentSchema = function(){
+                for(var i = 0; i < $scope.schema.variables.length; i++){
+                    delete $scope.schema.variables[i].form; // delete reference to form -> otherwise angular crashes
+                    if($scope.schema.variables[i].vid == null)
+                        $scope.schema.variables[i].vid = vid++; //assign variable id if not yet assigned
+                }
+                $scope.schema.ref.args[$scope.schema.ref.index] = {     //saving schema on argument via reference
+                    title: $scope.schema.title,
+                    description: $scope.schema.description,
+                    variables: $scope.schema.variables
+                };
+                $('#schemaModal').modal('hide');
+            };
+            $scope.saveCurrentCondition = function(){
+                $scope.condition.ref.args[$scope.condition.ref.index] = {
+                    step : $scope.condition.step,
+                    variable: $scope.condition.variable,
+                    operator: $scope.condition.operator,
+                    value: $scope.condition.value
+                };
+                $('#conditionModal').modal('hide');
+            }
+
             $scope.saveEditStep = function(Description, Domain, Local){
                 $scope.currentStep.description = Description;
                 $scope.currentStep.local = Local;
@@ -385,7 +425,7 @@
 
                 updateUmlState($scope.currentStep, Description, Domain, Local);
                 $('#editStepModal').modal('hide');
-            }
+            };
 
             $scope.editStepAddEmptyCommand = function(){
                 if($scope.editStep.commands == null)
@@ -396,7 +436,7 @@
             $scope.editStepRemoveCommand = function(Item){
                 var index = $scope.editStep.commands.indexOf(Item);
                 $scope.editStep.commands.splice(index, 1);
-            }
+            };
 
             $scope.verifyDuplicateNames = function(){
                 var sorted, i, isDuplicate;
@@ -409,7 +449,7 @@
                     isDuplicate = ((sorted[i-1] && sorted[i-1].name == sorted[i].name) || (sorted[i+1] && sorted[i+1].name == sorted[i].name));
                     sorted[i].form.varName.$setValidity('duplicate',!isDuplicate);
                 }
-            }
+            };
 
             function getStepByIID(iid){
                 for(var i = 0; i < $scope.steps.length; i++){
@@ -618,6 +658,26 @@
                 });
             }
 
+            function getEmptySchema(){
+                return angular.merge(getInitSchema(), {variables: []});
+            }
+
+            function getInitSchema(){
+                return {
+                    variablesceletons: [    // used to generate empty schema variables with the given default values
+                        {
+                            element: 'input',
+                            required: true,
+                            type: 'string'
+                        },{
+                            element: 'select',
+                            required: true,
+                            type: 'string'
+                        }
+                    ]
+                };
+            }
+
             function setStepNormal(Step){
                 Step.umlState.set('attrs', {
                     '.uml-state-body': {
@@ -628,6 +688,39 @@
                         stroke: 'rgba(48, 208, 198, 0.4)'
                     }
                 });
+            }
+
+            function updateStepVariables(){
+                $scope.vars = {};
+                for(var i = 0; i < $scope.steps.length; i++){
+                    $scope.vars[ $scope.steps[i].iid ] = getVariablesFromStep($scope.steps[i]);
+                }
+            }
+
+            function getVariablesFromStep(Step){
+                //get all variables from schemas
+                var vars = {};
+                var libName, commandName;
+                var commands = angular.copy(Step.commands);
+                if(Step.initCommand != null)
+                    commands.push(angular.copy(Step.initCommand));
+                for(var i = 0; i < commands.length; i++){
+                    libName = commands[i].library;
+                    commandName = commands[i].command;
+                    for(var y = 0; y < commands[i].args.length; y++){
+                        if(isArgSchema(Step, libName, commandName, y)){
+                            for(var j = 0; j < commands[i].args[y].variables.length; j++){
+                                vars[commands[i].args[y].variables[j].vid] = commands[i].args[y].variables[j];
+                            }
+                            //vars = vars.concat(commands[i].args[y].variables);
+                        }
+                    }
+                }
+                return vars;
+            }
+
+            function isArgSchema(Step, libName, commandName, argIndex){
+                return Step.domain.info.libraries[libName][commandName].args[argIndex].type == 'schema';
             }
         }
     ]);

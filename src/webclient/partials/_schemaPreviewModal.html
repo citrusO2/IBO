@@ -1,0 +1,26 @@
+<div class="modal fade" id="schemaPreviewModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="previewSchemaModalLabel">Schema Preview</h4>
+            </div>
+            <div class="modal-body">
+
+                <h1 class="page-header">{{schemaPreview.schema.title}}</h1>
+                <p>{{schemaPreview.schema.description}}</p>
+                <form data-sf-schema="schemaPreview.schema"
+                      data-sf-form="schemaPreview.form"
+                      data-sf-model="schemaPreview.model"
+                      name="schemapreviewform"
+                      data-ng-submit="schemaPreview.onSubmit(schemapreviewform)"></form>
+
+            </div><!-- end modal-body -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+

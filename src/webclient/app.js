@@ -132,4 +132,80 @@
         };
     }]);
 
+    iboApp.factory('SchemaV4Service', [ function() {
+        //creates the actual json schema used later by client+server
+        var createSchemaV4 = function(Schema){
+            return {
+                title: Schema.title,
+                description: Schema.description,
+                type: 'object',
+                properties: createSchemaV4properties(Schema.variables),
+                required: getRequiredVariableNames(Schema.variables)
+            }
+        }
+
+        function createSchemaV4properties(variables){
+            var properties = {};
+            for(var i = 0; i < variables.length; i++){
+                properties[variables[i].name] = createSchemaV4variableProperties(variables[i])
+            }
+            return properties;
+        }
+
+        function createSchemaV4variableProperties(variable){
+            var prop = {
+                title: variable.title,
+                description: variable.description,
+                type: variable.type
+            };
+
+            if(variable.element == 'input'){
+                if(variable.type == 'number' || variable.type == 'integer'){
+                    if(variable.hasMinimum)
+                        prop.minimum = variable.minimum;
+                    if(variable.hasMaximum)
+                        prop.maximum = variable.maximum;
+                } else if(variable.type == 'string'){
+                    if(variable.hasMinLength)
+                        prop.minLength = variable.minLength;
+                    if(variable.hasMaxLength)
+                        prop.maxLength = variable.maxLength;
+                } else {
+                     throw "update createSchemaV4variableProperties, input-element of type " + variable.type + " is not yet defined";
+                }
+            } else if(variable.element == 'select'){
+                if(variable.type == 'string'){
+                    prop.enum = getEnumValues(variable.options);
+                } else {
+                    throw "update createSchemaV4variableProperties, select-element of type " + variable.type + " is not yet defined";
+                }
+            } else {
+                throw "update createSchemaV4variableProperties, element " + variable.element + " is not yet defined";
+            }
+            return prop;
+        }
+
+        function getEnumValues(Options){
+            var e = [];
+            for(var i = 0; i < Options.length; i++){
+                e.push(Options[i].text);
+            }
+            return e;
+        }
+
+        function getRequiredVariableNames(Variables){
+            var required = [];
+            for(var i = 0; i < Variables.length; i++){
+                if(Variables[i].required)
+                    required.push(Variables[i].name);
+            }
+            return required;
+        }
+
+
+        return{
+            createSchema: createSchemaV4
+        }
+    }]);
+
 })();
