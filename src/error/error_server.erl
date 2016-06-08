@@ -28,10 +28,13 @@
 -export([start_link/1, stop/1, process_xbo/4, process_xbo/5]).
 
 %% starts a new global error server with the given name as the global name
--spec start_link(Args :: #{name => binary()} ) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
+-spec start_link(Args :: #{name => binary()} ) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}
+    ;           (Name :: binary()) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
 start_link(Args) when is_map(Args) ->
     Name = maps:get(name, Args),
-    gen_server:start_link({global, Name}, ?MODULE, Args, []).
+    gen_server:start_link({global, Name}, ?MODULE, Args, []);
+start_link(Name) when is_binary(Name) ->
+    start_link(#{name => Name}).
 
 %% stops an error server by its name
 -spec stop(Box :: binary()) -> ok.
@@ -99,5 +102,5 @@ store_case(Case) when is_record(Case, ibo_errorcase) ->
     ),
     case Res of
         {atomic, ok} -> ok;
-        _ -> {error, "Write failure"}
+        _ -> {error, "Error Server - Write failure"}
     end.

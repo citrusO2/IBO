@@ -101,6 +101,38 @@
     },#ibo_xboline{library = xlib_basic, command = finish}
 ]).
 
+-define(XBO_COMMANDS4, ?XBO_COMMANDS_XCONDITION([1, <<"yesno">>, <<"equal">>,<<"yes">>])).
+
+-define(XBO_COMMANDS_XCONDITION(XCondition), [
+    #ibo_xboline{
+        library = xlib_box,
+        command = init,
+        args = [
+            #{
+                <<"title">> => <<"Marketing Budget - Decision2">>,
+                <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+                <<"type">> => <<"object">>,
+                <<"properties">> => #{
+                    <<"reason">> => #{
+                        <<"title">> => <<"Reason">>,
+                        <<"description">> => <<"The reason for your decision">>,
+                        <<"type">> => <<"string">>
+                    },
+                    <<"yesno">> => #{
+                        <<"title">> => <<"Decide">>,
+                        <<"description">> => <<"tick your decision">>,
+                        <<"type">> => <<"string">>,
+                        <<"enum">> => [<<"no">>,<<"yes">>,<<"maybe">>]
+                    }
+                },
+                <<"required">> => [<<"reason">>, <<"yesno">>]
+            }
+        ]
+    },#ibo_xboline{library = xlib_basic, command = cjump, args = [4, XCondition]},
+    #ibo_xboline{library = xlib_basic, command = send, args = [1, ?BOX_NAME]},
+    #ibo_xboline{library = xlib_basic, command = finish}
+]).
+
 -define(XBO, #ibo_xbo{
     id = <<"1-141232">>,
     format_indicator = 1,
@@ -185,6 +217,35 @@
         local = <<"marketing">>,
         description = <<"Accept or deny the marketing budget">>,
         commands = ?XBO_COMMANDS2
+    }]
+}).
+
+-define(LIBTEST3XBO, #ibo_xbo{
+    id = <<"1-141233">>,
+    format_indicator = 1,
+    created_by = <<"hanswurst">>,
+    template = <<"marketingbudgetdecision">>,
+    router = [?ROUTER_NAME],
+    steps = [#ibo_xbostep{
+        domain = ?BOX_NAME,
+        local = <<"marketing">>,
+        description = <<"Accept or deny the marketing budget">>,
+        commands = ?XBO_COMMANDS4
+    }]
+}).
+
+-define(LIBTESTDYNXBO_XCONDITION(XCondition), #ibo_xbo{
+    id = <<"1-141233">>,
+    format_indicator = 1,
+    created_by = <<"hanswurst">>,
+    template = <<"marketingbudgetdecision">>,
+    router = [?ROUTER_NAME],
+    error = [?ERROR_SERVER_NAME],
+    steps = [#ibo_xbostep{
+        domain = ?BOX_NAME,
+        local = <<"marketing">>,
+        description = <<"Accept or deny the marketing budget">>,
+        commands = ?XBO_COMMANDS_XCONDITION(XCondition)
     }]
 }).
 

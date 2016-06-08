@@ -37,6 +37,9 @@
                                     <option data-ng-if="vars[condition.step][condition.variable].type == 'integer' || vars[condition.step][condition.variable].type == 'number'"><=</option>
                                     <option data-ng-if="vars[condition.step][condition.variable].type == 'integer' || vars[condition.step][condition.variable].type == 'number' || vars[condition.step][condition.variable].type == 'string'">equal</option>
                                     <option data-ng-if="vars[condition.step][condition.variable].type == 'integer' || vars[condition.step][condition.variable].type == 'number' || vars[condition.step][condition.variable].type == 'string'">unequal</option>
+                                    <option data-ng-if="vars[condition.step][condition.variable].type == 'string'">starts with</option>
+                                    <option data-ng-if="vars[condition.step][condition.variable].type == 'string'">ends with</option>
+                                    <option data-ng-if="vars[condition.step][condition.variable].type == 'string'">contains</option>
                                 </select>
                             </div>
                             <div class="form-group">

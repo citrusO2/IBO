@@ -36,10 +36,13 @@
 -export([start_link/1, stop/1, process_xbo/3, get_boxindices/2, get_webinit/2, execute_xbo/3, xbo_childprocess/3, xlib_info/0]).
 
 %% starts a new global box server with the given name as the global name
--spec start_link(Args :: #{name => binary()} ) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
+-spec start_link(Args :: #{name => binary()}) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}
+    ;           (Name :: binary()) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
 start_link(Args) when is_map(Args)->
     Name = maps:get(name, Args),
-    gen_server:start_link({global, Name}, ?MODULE, Args, []).
+    gen_server:start_link({global, Name}, ?MODULE, Args, []);
+start_link(Name) when is_binary(Name) ->
+    start_link(#{name => Name}).
 
 %% stops a box by its name
 -spec stop(Box :: binary()) -> ok.
@@ -153,8 +156,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%% Executing XBO Childprocess
 %%%===================================================================
 xbo_childprocess(Config, From, ServerName) ->
-    io:format("xbo_childprocess started"),
-
+    %io:format("xbo_childprocess started"),
     Result = try xlib:start(Config) of
         {finish, XlibState} ->
             xbo_childprocess_finish(XlibState);
@@ -194,15 +196,16 @@ xbo_childprocess_send(XlibState, NewStepNr, NewDestination) ->
         {aborted, Reason} -> {error, Reason}
     end.
 
-xbo_childprocess_error(XlibState, Reason, OwnName) ->
+xbo_childprocess_error(XlibState, CalledReason, OwnName) ->
     Res = mnesia:transaction(
         fun() ->
             remove_xbo_transactionless(XlibState),
-            xbo_router:debug_xbo(XlibState, Reason, OwnName)
+            xbo_router:debug_xbo(XlibState, CalledReason, OwnName)
         end
     ),
     case Res of
         {atomic, ok} -> {error, xbo_error};
+        {atomic, {error, Reason}} -> {error, Reason};
         {aborted, Reason} -> {error, Reason}
     end.
 
@@ -253,7 +256,7 @@ store_xbo(XBO, StepNr) ->   % TODO consider correlation ID to "merge" several ID
         end),
     case Res of
         {atomic, ok} -> ok;
-        _ -> {error, "Write failure"}
+        _ -> {error, "Box Server - Write failure"}
     end.
 
 %% check init function of the XBO and that the XBO is not yet stored

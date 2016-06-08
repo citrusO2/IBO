@@ -60,8 +60,19 @@ xlib_info() ->
 
 % conditional jump to a certain line
 -spec cjump(#xlib_state{},non_neg_integer(),fun((#ibo_xbostepdata{},list(#ibo_xbostepdata{})|[]) -> true|false)) -> any() .
-cjump(State, LineNr, Condition) ->
+cjump(State, LineNr, Condition) when is_function(Condition, 2) ->
     case Condition(State#xlib_state.current_stepdata, State#xlib_state.xbo#ibo_xbo.stepdata) of
+        true ->
+            xlib:next(State#xlib_state{current_linenr = LineNr - 1});    % -1 because next increases the LineNr by 1
+        false ->
+            xlib:next(State)
+    end;
+
+% conditional jump with the condition given as a list
+cjump(State, LineNr, Condition) when is_list(Condition) ->
+    case xcondition:eval(Condition, State) of
+        error ->
+            {error, State, "xconditon evaluation error"};
         true ->
             xlib:next(State#xlib_state{current_linenr = LineNr - 1});    % -1 because next increases the LineNr by 1
         false ->

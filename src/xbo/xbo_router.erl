@@ -73,7 +73,7 @@ strict_end_xbo(XBO, NewStepData) when is_record(XBO, ibo_xbo) ->
 
 % tells the router that an error has occurred while handling the XBO
 -spec debug_xbo(#xlib_state{}, Reason :: term(), From :: binary()) -> ok | {error, nonempty_string()}.
-debug_xbo(XlibState = #xlib_state{xbo = #ibo_xbo{router = Router}}, Reason, From) ->
+debug_xbo( #xlib_state{xbo = #ibo_xbo{router = Router}} = XlibState, Reason, From) ->
     xbo_router_lib:debug_xbo(Router, XlibState, Reason, From, lenient).
 
 % same as debug_xbo, only that the packet is not sent to the deadletter and returns an error instead of forwarding it to the deadletter server

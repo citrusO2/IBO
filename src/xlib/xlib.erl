@@ -112,14 +112,14 @@ throw_if_true(Expression,ThrowReason)->
 
 function_exported(Module, Function, Arity) -> %% error in erlang, erlang:function_exported does not work without having the function called before or only after calling :module_info() of the module in question -> crashes tests
     ExportedFunctions = apply(Module, module_info,[exports]),
-    io:format("Exported functions: (~p)~n", [ExportedFunctions]),
+    %io:format("Exported functions: (~p)~n", [ExportedFunctions]),
     lists:any( fun({F,A}) ->
         (F =/= module_info) andalso (F =/= xlib_info) andalso (F =:= Function) and (A =:= Arity)  % module_info gets exported automatically but should never be used as an xlib command
     end, ExportedFunctions).
 
 function_exported(Module, Function) ->
     ExportedFunctions = apply(Module, module_info,[exports]),
-    io:format("Exported functions: (~p)~n", [ExportedFunctions]),
+    %io:format("Exported functions: (~p)~n", [ExportedFunctions]),
     lists:any( fun({F,_A}) ->
         (F =/= module_info) andalso (F =/= xlib_info) andalso (F =:= Function)    % module_info gets exported automatically but should never be used as an xlib command
     end, ExportedFunctions).

@@ -73,7 +73,7 @@
                                 <select data-ng-if="arg.type == 'step'" class="form-control" id="commandArgInit{{arg.name}}" data-ng-model="editStep.initCommand.args[$index]" data-ng-options="step.iid as step.description for step in steps"></select>
                                 <input data-ng-if="arg.type == 'integer'" type="number"  class="form-control" id="commandArgInit{{arg.name}}" data-ng-model="editStep.initCommand.args[$index]">
                                 <button data-ng-if="arg.type == 'schema'" class="btn btn-default" id="commandArg{{$parent.$index}}{{arg.name}}"  data-ng-init="editStep.initCommand.args[$index] = editStep.initCommand.args[$index] == null ? {} : editStep.initCommand.args[$index]" data-ng-click="editCurrentSchema(editStep.initCommand.args, $index)">EditSchema</button><button data-ng-if="arg.type == 'schema'" class="btn btn-default" data-ng-click="previewCurrentSchema(editStep.initCommand.args[$index])" data-ng-disabled="editStep.initCommand.args[$index].title == null">Preview</button>
-                                <input data-ng-if="arg.type == 'condition'" type="text"  class="form-control" id="commandArgInit{{arg.name}}" data-ng-model="editStep.initCommand.args[$index]">
+                                <button data-ng-if="arg.type == 'condition'" class="btn btn-default" id="commandArgInit{{arg.name}}" data-ng-init="editStep.initCommand.args[$index] = editStep.initCommand.args[$index] == null ? {} : editStep.initCommand.args[$index]" data-ng-click="editCurrentCondition(editStep.initCommand.args, $index)">EditCondition</button>
                             </div>
                         </div>
                         <br>
@@ -99,7 +99,7 @@
                                         <select data-ng-if="arg.type == 'step'" class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]" data-ng-options="step.iid as step.description for step in steps"></select>
                                         <input data-ng-if="arg.type == 'integer'" type="number"  class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]">
                                         <button data-ng-if="arg.type == 'schema'" class="btn btn-default" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-init="command.args[$index] = command.args[$index] == null ? {} : command.args[$index]" data-ng-click="editCurrentSchema(command.args, $index)">EditSchema</button><button data-ng-if="arg.type == 'schema'" class="btn btn-default" data-ng-click="previewCurrentSchema(command.args[$index])" data-ng-disabled="command.args[$index].title == null">Preview</button>
-                                        <button data-ng-if="arg.type == 'condition'" class="btn btn-default" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index] = command.args[$index] == null ? {} : command.args[$index]" data-ng-click="editCurrentCondition(command.args, $index)">EditCondition</button>
+                                        <button data-ng-if="arg.type == 'condition'" class="btn btn-default" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-init="command.args[$index] = command.args[$index] == null ? {} : command.args[$index]" data-ng-click="editCurrentCondition(command.args, $index)">EditCondition</button>
                                     </div>
                                     <!--<span data-ng-include="'./partials/_editStepModal.html'"></span>-->
                                     <!--<div class="form-group">-->
