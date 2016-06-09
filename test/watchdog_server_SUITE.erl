@@ -18,15 +18,20 @@
 -define(ROUTER_NAME, <<"ROUTER1">>).
 -define(ERROR_SERVER_NAME, <<"ERRORSRV1">>).
 -define(BOX_NAME, <<"BOX1">>).
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_SERVER_NAME], n => 1 }).
+-define(REPO_MANAGEGROUPS, [<<"ACL_SAVE_TEMPLATES">>]).
+-define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_SERVER_NAME], n => 1,  managegroups => ?REPO_MANAGEGROUPS }).
 -define(ERROR_ARGS, #{name => ?ERROR_SERVER_NAME}).
 
 all() -> [start_iactor_test, iactor_restart_test, iactor_restart_test2, iactor_restart_test3, iactor_doublestart_test, iactor_config_test, iactor_config_start_test, get_iactors_test, get_xactors_test, start_iactor_simple_test].
 
 init_per_suite(Config) ->
+    ok = mnesia:create_schema([node()]),
+    mnesia:start(),
     Config.
 
 end_per_suite(_Config) ->
+    mnesia:stop(),
+    ok = mnesia:delete_schema([node()]),
     ok.
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list

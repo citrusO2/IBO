@@ -10,7 +10,7 @@
 -author("Florian").
 
 %% API
--export([read_transactional/2, write_transactional/1, is_key_in_table/2]).
+-export([read_transactional/2, write_transactional/1, is_key_in_table/2, is_table_existing/1, create_local_table_if_nonexistent/4]).
 
 read_transactional(Table, Key) ->
     Res = mnesia:transaction(
@@ -43,3 +43,20 @@ is_key_in_table(Table, Key) ->
         {atomic, []} -> false;
         _ -> throw("Cannot check if Key is in Table")
     end.
+
+is_table_existing(Table) ->
+    Tables = mnesia:system_info(tables),
+    lists:member(Table,Tables).
+
+% creates a local table with the given parameters if the table does not exist yet
+create_local_table_if_nonexistent(TableName, RecordInfo, Replication, Type)->
+    create_local_table_if_nonexistent(TableName, RecordInfo, Replication, Type, is_table_existing(TableName)).
+
+create_local_table_if_nonexistent(_TableName, _RecordInfo, _Replication, _Type, true) -> % table does exist, nothing to do
+    ok;
+create_local_table_if_nonexistent(TableName, RecordInfo, Replication, Type, false) ->           % table does not exist, create it
+    {atomic, ok} = mnesia:create_table(TableName,
+        [{attributes, RecordInfo },
+            {Replication, [node()]},
+            {type, Type}]),
+    ok.

@@ -451,11 +451,28 @@
                 }
             };
 
+            $scope.saveTemplate = function(){
+                //console.log(getExportTemplate());
+                $('#templateSettingsModal').modal('show');
+            }
+
             function getStepByIID(iid){
                 for(var i = 0; i < $scope.steps.length; i++){
                     if($scope.steps[i].iid == iid)
                         return $scope.steps[i];
                 }
+            }
+
+            function getStepIndexByIID(iid){
+                for(var i = 0; i < $scope.steps.length; i++){
+                    if($scope.steps[i].iid == iid)
+                        return i;
+                }
+                return -1;
+            }
+
+            function getStepNrByIID(iid){   // erlang lists start with index = 1
+                return getStepIndexByIID(iid)+1;
             }
 
             function getStepFromCellView(cellView){
@@ -470,6 +487,17 @@
                     if($scope.steps[i].umlState.id == step.umlState.id)
                         return i;
                 }
+            }
+
+            function getDestinationStepNrByTransition(transition){
+                for(var i = 0; i < $scope.steps.length; i++){
+                    if($scope.steps[i].umlState.id == transition.attributes.target.id)
+                        return i+1;
+                }
+                if(transition.attributes.target.id == endState.id)
+                    return 0;
+
+                throw "no destination identifier "
             }
 
 //            function getXactorByName(name){
@@ -544,7 +572,7 @@
                 //Step.umlState.set('size', { width: umlWidth, height: 100 });
                 Step.umlState.resize(umlWidth, umlHeight);
 
-                //update outgoing transitions (manual update and not simple delete/add to keep manual set arrow points)
+                //update outgoing transitions (manual update and not simple delete/add to keep vertices of the transition)
                 //1. detect changes, update/insert transitions accordingly
                 var checked = []
                 for(var i = 0; i < Step.commands.length; i++){
@@ -590,9 +618,9 @@
 
             function getUmlSendTransitionIndexByCommand(Command, umlTransitions){
                 for(var i = 0; i < umlTransitions.length; i++){
-                    var destIID = Command.args[0];
-                    var destUID = getStepByIID(destIID).umlState.id;
-                    if( destUID == umlTransitions[i].attributes.target.id )
+                    var destIID = Command.args[0];                          // iid of the command's destination
+                    var destUID = getStepByIID(destIID).umlState.id;        // umlState id of the destination
+                    if( destUID == umlTransitions[i].attributes.target.id ) // return index if target's uml-id is the same as the transition's target's uml-id
                         return i;
                 }
                 return -1;
@@ -720,8 +748,108 @@
             }
 
             function isArgSchema(Step, libName, commandName, argIndex){
-                return Step.domain.info.libraries[libName][commandName].args[argIndex].type == 'schema';
+                return getArgType(Step, libName, commandName, argIndex) == 'schema';
             }
+
+            function getArgType(Step, libName, commandName, argIndex){
+                return Step.domain.info.libraries[libName][commandName].args[argIndex].type
+            }
+
+            function getExportTemplate(){
+                return {
+                    name: "mytemplatename",
+                    version: 1,
+                    ttl: 60*60*24*14, // ttl in seconds
+                    steps: getExportSteps(),
+                    groups: ["group1", "group2"],
+                    startstepnr: getStepNrByIID($scope.startStep.iid),
+                    startdestination: getStepByIID($scope.startStep.iid).domain.name,
+                    gui: {
+                        steps : getGuiSteps(),
+                        start : { point : startState.attributes.position, vertices : startTransition.attributes.vertices},
+                        endpoint : endState.attributes.position,
+                    }   // umlState.attributes.position.x / .y
+                };      // umlTransitions[index].attributes.vertices[index2].x / .y
+            }           // -startState.attributes.position.x / .y
+                        // -startSTate.attributes.vertices[index].x / .y
+                        // -endState.attributes.position.x /.y
+
+            function getGuiSteps(){
+                var gs = [];
+                for(var i = 0; i < $scope.steps.length; i++){
+                    var v = [];
+                    var transitions = $scope.steps[i].umlTransitions;
+                    for(var j = 0; j < transitions.length; j++){
+                        v.push({
+                            destination: getDestinationStepNrByTransition(transitions[j]),
+                            vertices: transitions[j].attributes.vertices
+                        });
+                    }
+
+                    gs.push({
+                        position: $scope.steps[i].umlState.attributes.position,
+                        transitions: v
+                    });
+                }
+                return gs;
+            }
+
+            function getExportSteps(){
+                var s = angular.copy($scope.steps);
+                var u = [];
+                for(var i = 0; i < s.length; i++){
+                    var coms = []
+                    if(s[i].initCommand != null){   // if there is an initCommand, add it to the beginning of the other commands
+                        s[i].commands.unshift(s[i].initCommand);
+                    }
+
+                    for(var j = 0; j < s[i].commands.length; j++){
+                        var lib = s[i].commands[j].library;
+                        var com = s[i].commands[j].command;
+                        var args = s[i].commands[j].args;
+                        coms.push({
+                            library :   lib,
+                            command :   com,
+                            args :      getExportArgs(s[i],lib,com, args)
+                        });
+                    }
+
+                    u.push({
+                        domain :        s[i].domain.name,
+                        local :         s[i].local.name,
+                        description :   s[i].description,
+                        commands :      coms
+                    });
+                }
+                return u;
+            }
+
+            function getExportArgs(Step, Library, Command, Args){
+                var a = [];
+                for(var i = 0; i < Args.length; i++){
+                    var type = getArgType(Step, Library, Command, i);
+                    switch(type){
+                        case "integer":
+                            a.push(Args[i]);
+                            break;
+                        case "step": //redirect to index of step, instead of internal id
+                            a.push(getStepNrByIID(Args[i]));    // step consists of first the new StepNr that should be executed and second of the destination name
+                            a.push(Step.domain.name);
+                            break;
+                        case "condition":
+                            var c = Args[i];
+                            a.push([getStepNrByIID(c.step), $scope.vars[Step.iid][c.variable].name, c.operator, c.value]);  //redirect vid to variable name
+                            break;
+                        case "schema":
+                            a.push(SchemaV4Service.createSchema(Args[i]));
+                            break;
+                        default:
+                            throw "error exporting template, an argument in one of the step's commands has an unsupported type";
+                    }
+                }
+                return a;
+            }
+
         }
     ]);
 

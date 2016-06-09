@@ -13,15 +13,36 @@
 -ifndef(REPO_RECORDS_HRL).
 -define(REPO_RECORDS_HRL, 1).
 
+
+-type point() :: {integer(), integer()}.
+
+-record(ibo_repo_gui_transition, {
+    destination :: finish | non_neg_integer(),  % the destination of the step (either stepnr or
+    vertices :: [point()]                       % points through which the transition line is drawn through
+}).
+
+-record(ibo_repo_gui_step, {
+    position :: point(),                            % the position of the step in the gui (the size will be determined automatically)
+    transitions :: list(#ibo_repo_gui_transition{}) % list of transition for the given step
+}).
+
+-record(ibo_repo_gui, {
+    steps :: nonempty_list(#ibo_repo_gui_step{}),
+    start :: {point(), [point()]},                  % position of the startpoint and its vertices
+    endpoint :: point()                             % only the position, as the vertices are drawn via the steps
+}).
+
 -record(ibo_repo_template, {
-    template :: nonempty_string(),                  % unique xbo template name
-    template_version :: non_neg_integer(),
+    name :: binary(),                  % unique xbo template name
+    version :: non_neg_integer(),
     ttl :: non_neg_integer(),                       % timespan in seconds for how long the xbo is valid
     steps :: nonempty_list(#ibo_xbostep{}),
-    groups :: nonempty_list(nonempty_string()),     % groups which may start the template
+    groups :: nonempty_list(binary()),     % groups which may start the template
     startstepnr :: non_neg_integer(),
-    startdestination :: nonempty_string(),
-    transform :: fun( (#ibo_xbo{}, Args :: [] | any()) -> #ibo_xbo{})
+    startdestination :: binary(),
+    created_by :: binary(),
+    gui :: #ibo_repo_gui{},
+    transform = fun (XBO,_Args) -> XBO end :: fun( (#ibo_xbo{}, Args :: [] | any()) -> #ibo_xbo{})  % default = no transformation
 }).
 
 -endif. % REPO_RECORDS_HRL defined

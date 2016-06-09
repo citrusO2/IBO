@@ -11,9 +11,12 @@
 
 %% API ---------------------------------------------------------------
 -export([add_record_to_mnesia/1,
+    add_records_to_mnesia/1,
     remove_record_from_mnesia/1,
+    traverse_table_and_show/1,
     print_var/2,
-    create_table_for_record/3,
+    init_mnesia/0,
+    deinit_mnesia/0,
     read_transactional/2,
     get_recordcount_in_table/1,
     wait/1,wait/0,waitms/1,
@@ -27,6 +30,11 @@ add_record_to_mnesia(Record) ->
     {atomic, ok} = mnesia:transaction(F),
     ok.
 
+add_records_to_mnesia([]) -> ok;
+add_records_to_mnesia([Record|Records]) ->
+    add_record_to_mnesia(Record),
+    add_records_to_mnesia(Records).
+
 remove_record_from_mnesia(Record) ->
     F = fun() ->
         mnesia:delete({element(1, Record), element(2, Record)})
@@ -34,15 +42,31 @@ remove_record_from_mnesia(Record) ->
     {atomic, ok} = mnesia:transaction(F),
     ok.
 
+traverse_table_and_show(Table_name)->
+    Iterator =  fun(Rec,_)->
+        io:format("~p~n",[Rec]),
+        []
+                end,
+    case mnesia:is_transaction() of
+        true -> mnesia:foldl(Iterator,[],Table_name);
+        false ->
+            Exec = fun({Fun,Tab}) -> mnesia:foldl(Fun, [],Tab) end,
+            mnesia:activity(transaction,Exec,[{Iterator,Table_name}],mnesia_frag)
+    end.
+
 print_var(VarName, Var) ->
     io:format("~p: ~p~n", [VarName, Var]),
     ok.
 
-create_table_for_record(Table, RecordInfo, Nodes) ->
-    mnesia:create_table(Table,
-        [{attributes, RecordInfo},
-            {disc_copies, Nodes},
-            {type, set}]).
+init_mnesia() ->
+    Nodes = [node()],
+    ok = mnesia:create_schema(Nodes),
+    mnesia:start().
+
+deinit_mnesia() ->
+    Nodes = [node()],
+    rpc:multicall(Nodes, application, stop, [mnesia]),
+    ok = mnesia:delete_schema(Nodes).
 
 read_transactional(Table, Key) ->
     Res = mnesia:transaction(
@@ -56,14 +80,7 @@ read_transactional(Table, Key) ->
     end.
 
 get_recordcount_in_table(Table) ->
-    Res = mnesia:transaction(
-        fun() ->
-            mnesia:all_keys(Table)
-        end),
-    case Res of
-        {atomic, Record} -> length(Record);
-        _ -> {error, "Read failure"}
-    end.
+    mnesia:table_info(Table, size).
 
 % default wait period
 wait() ->

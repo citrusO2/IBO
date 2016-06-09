@@ -26,22 +26,11 @@ all() -> [process_xbo_emptybox_test, process_xbo_nonemptybox_test,
     get_dynamicwebinit_test, execute_xbo_test].
 
 init_per_suite(Config) ->
-    Nodes = [node()],
-    ok = mnesia:create_schema(Nodes),
-    rpc:multicall(Nodes, application, start, [mnesia]),
-    ct_helper:create_table_for_record(ibo_boxdata, record_info(fields, ibo_boxdata), Nodes),
-    ct_helper:create_table_for_record(ibo_boxindex, record_info(fields, ibo_boxindex), Nodes),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    mnesia:start(),
-    mnesia:wait_for_tables([ibo_boxdata, ibo_boxindex], 5000),
+    ct_helper:init_mnesia(),
     Config.
 
 end_per_suite(_Config) ->
-    Nodes = [node()],
-    {atomic, ok} = mnesia:delete_table(ibo_boxdata),
-    {atomic, ok} = mnesia:delete_table(ibo_boxindex),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    ok = mnesia:delete_schema(Nodes).
+    ct_helper:deinit_mnesia().
 
 init_per_testcase(execute_xbo_test, Config) ->
     box_server:start_link(#{name =>?BOX_NAME}),
@@ -179,7 +168,7 @@ get_boxindices_user_test(_Config) ->
     ok = box_server:process_xbo(?BOX_NAME, ?NEWGROUPXBO2, XBOstepnr),
 
     User = #ibo_user{username = <<"miau">>, firstname = <<"Mia">>, lastname = <<"Upurr">>, groups = ["marketing", "it"]},
-    Response1 = box_server:get_boxindices(?BOX_NAME, User),
+    Response1 = box_server:get_boxindices(?BOX_NAME, User#ibo_user.groups), % should use resolve groups from directory
     false = lists:any(fun (X) -> X#ibo_boxindex.groupname =:= "production" end, Response1).
 
 get_webinit_test(_Config) ->

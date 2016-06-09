@@ -16,8 +16,8 @@
 
 marketingbudget_template() ->
     #ibo_repo_template{
-        template = <<"Accept or deny the marketing budget">>,
-        template_version = 1,
+        name = <<"Accept or deny the marketing budget">>,
+        version = 1,
         ttl = 60*60*24*14,
         steps = [
             #ibo_xbostep{

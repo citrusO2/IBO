@@ -23,16 +23,11 @@ all() -> [store_case_test, store_routercase_test].
 init_per_suite(Config) ->
     Nodes = [node()],
     ok = mnesia:create_schema(Nodes),
-    rpc:multicall(Nodes, application, start, [mnesia]),
-    ct_helper:create_table_for_record(ibo_errordata, record_info(fields, ibo_errordata), Nodes),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
     mnesia:start(),
-    mnesia:wait_for_tables([ibo_errordata], 5000),
     Config.
 
 end_per_suite(_Config) ->
     Nodes = [node()],
-    {atomic, ok} = mnesia:delete_table(ibo_errordata),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     ok = mnesia:delete_schema(Nodes).
 

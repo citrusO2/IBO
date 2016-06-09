@@ -73,8 +73,8 @@ ibo_repo_router_box_test(Config) ->
     User = ?MARKETINGUSER,
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
-    ok = repo_server:store_template(?REPO_NAME, Template),
-    ok = repo_server:start_template(?REPO_NAME, User, Template#ibo_repo_template.template),
+    ok = repo_server:store_template(?REPO_NAME, Template, ?REPO_MANAGEGROUPS),
+    ok = repo_server:start_template(?REPO_NAME, User#ibo_user.groups, User#ibo_user.username, Template#ibo_repo_template.name),   % warning, groups should be resolved by directory_server!
     ct_helper:wait(),
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),

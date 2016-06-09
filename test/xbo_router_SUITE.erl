@@ -22,24 +22,11 @@
 all() -> [sent_to_test, sent_to_baddestination_test, sent_to_wrongdomain_test, send_to_second_router_test].
 
 init_per_suite(Config) ->
-    Nodes = [node()],
-    ok = mnesia:create_schema(Nodes),
-    rpc:multicall(Nodes, application, start, [mnesia]),
-    ct_helper:create_table_for_record(ibo_boxdata, record_info(fields, ibo_boxdata), Nodes),
-    ct_helper:create_table_for_record(ibo_boxindex, record_info(fields, ibo_boxindex), Nodes),
-    ct_helper:create_table_for_record(ibo_errordata, record_info(fields, ibo_errordata), Nodes),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    mnesia:start(),
-    mnesia:wait_for_tables([ibo_boxdata, ibo_boxindex, ibo_errordata], 5000),
+    ct_helper:init_mnesia(),
     Config.
 
 end_per_suite(_Config) ->
-    Nodes = [node()],
-    {atomic, ok} = mnesia:delete_table(ibo_boxdata),
-    {atomic, ok} = mnesia:delete_table(ibo_boxindex),
-    {atomic, ok} = mnesia:delete_table(ibo_errordata),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    ok = mnesia:delete_schema(Nodes).
+    ct_helper:deinit_mnesia().
 
 init_per_testcase(send_to_second_router_test, Config) ->
     box_server:start_link(#{name =>?BOX_NAME}),

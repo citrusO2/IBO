@@ -20,7 +20,8 @@
 -define(BOX2_NAME, <<"BOX2">>).
 -define(WEB_NAME, <<"WEB1">>).
 
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1 }).
+-define(REPO_MANAGEGROUPS, [<<"ACL_SAVE_TEMPLATES">>] ).
+-define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1, managegroups => ?REPO_MANAGEGROUPS }).
 -define(DIRECTORY_ARGS, #{name=>?DIRECTORY_NAME}).
 -define(ERROR_ARGS, #{name=>?ERROR_NAME}).
 -define(WEB_ARGS, #{name=>?WEB_NAME, directory=>?DIRECTORY_NAME, box => ?BOX_NAME, repo => ?REPO_NAME}).
@@ -99,8 +100,8 @@
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"marketing">>],
-        template = <<"marketingbudgetdecision">>,
-        template_version = 1,
+        name = <<"marketingbudgetdecision">>,
+        version = 1,
         ttl = 60*60*24*7,   % = 1 week
         transform = fun (XBO,_Args) -> XBO end  % = no change
     }
@@ -112,8 +113,8 @@
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"marketing">>, <<"maybes">>],
-        template = <<"malala">>,
-        template_version = 1,
+        name = <<"malala">>,
+        version = 1,
         ttl = 60*60*24*7,   % = 1 week
         transform = fun (XBO,_Args) -> XBO end  % = no change
     }
@@ -125,9 +126,20 @@
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"it">>],
-        template = <<"wuhaha">>,
-        template_version = 1,
+        name = <<"wuhaha">>,
+        version = 1,
         ttl = 60*60*24*7,   % = 1 week
         transform = fun (XBO,_Args) -> XBO end  % = no change
+    }
+).
+
+-define(TEMPLATE_TESTTEMPLATE4,
+    #ibo_repo_template{
+        startdestination = ?BOX_NAME,
+        startstepnr = 1,
+        steps = ?TEMPLATE_TESTSTEPS1,
+        groups = [<<"it">>],
+        name = <<"wuhaha">>,
+        ttl = 60*60*24*7   % = 1 week
     }
 ).

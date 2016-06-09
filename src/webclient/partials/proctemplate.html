@@ -22,6 +22,19 @@
 
 <div class="btn-toolbar" role="toolbar">
     <div class="btn-group" role="group">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-default dropdown-toggle"  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                File
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a href="" data-ng-click="saveTemplate()">save template</a></li>
+            </ul>
+        </div>
+    </div>
+
+
+    <div class="btn-group" role="group">
         <button type="button" class="btn btn-default" data-toggle="modal" data-target="#newStepModal">
             <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> New Step
         </button>
@@ -69,3 +82,7 @@
 <!-- condition modal -->
 <div data-ng-include="'./partials/_conditionModal.html'"></div>
 <!-- end condition modal -->
+
+<!-- template settings modal -->
+<div data-ng-include="'./partials/_templateSettingsModal.html'"></div>
+<!-- end template settings modal -->

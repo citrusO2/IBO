@@ -26,7 +26,7 @@
 -export([start_link/1, stop/1,
     get_user/2, search_user/2,
     get_group/2, write_group/2, search_group/2, get_all_groups/1,
-    create_user/3, update_user/3, get_user_info/3]).
+    create_user/3, update_user/3, get_user_info/3, resolve_usergroups/2]).
 
 %% starts a new global directory server with the given name as the global name
 -spec start_link(Args :: #{name => binary()}) ->  {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -87,6 +87,22 @@ update_user(Directory, User, Password) ->
 get_user_info(Directory, Username, Password) ->
     gen_server:call({global, Directory}, {get_user_info, Username, Password}).
 
+%% retrieves all groups of a user recursively
+-spec resolve_usergroups(Directory :: binary(), Groups :: [binary()]) -> [binary()] | not_found | {error, term()};
+                        (Directory :: binary(), User :: #ibo_user{}) -> [binary()] | not_found | {error, term()};
+                        (Directory :: binary(), Username :: binary()) -> [binary()] | not_found | {error, term()}.
+resolve_usergroups(Directory, Groups) when is_list(Groups)->
+    gen_server:call({global, Directory}, {resolve_usergroups, Groups});
+resolve_usergroups(Directory, User) when is_record(User, ibo_user)->
+    resolve_usergroups(Directory, User#ibo_user.groups);
+resolve_usergroups(Directory, Username) when is_binary(Username) ->
+    case get_user(Directory, Username) of
+        User when is_record(User, ibo_user) ->
+            resolve_usergroups(Directory, User);
+        Else -> Else    % propagate error from get_user
+    end.
+
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -94,6 +110,7 @@ init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     Name = maps:get(name, Args),
     io:format("~p (~p) starting~n", [?MODULE, Name]),
+    create_tables_if_nonexistent(),
     {ok, #state{name = Name}}. % 0 = initial state
 
 handle_call({get_user, Username}, _From, S) ->
@@ -110,6 +127,8 @@ handle_call({create_user, User, Password}, _From, S) ->
     {reply, create_or_update_user(User, Password), S};
 handle_call({get_user_info, Username, Password}, _From, S) ->
     {reply, read_user_info(Username, Password), S};
+handle_call({resolve_usergroups, Groups}, _From, S) ->
+    {reply, resolve_groups_transactional(Groups), S};
 handle_call(stop, _From, S) ->
     {stop, normal, stopped, S}.
 
@@ -124,6 +143,43 @@ code_change(_OldVsn, S, _Extra) -> {ok, S}.
 %%% Internal functions
 %%%===================================================================
 %%do(qlc:q([X || X <- mnesia:table(ibo_directory), X#user.username =:= Username])).
+
+create_tables_if_nonexistent() ->
+    db:create_local_table_if_nonexistent(ibo_user,
+        record_info(fields, ibo_user),
+        disc_copies, set),
+    db:create_local_table_if_nonexistent(ibo_group,
+        record_info(fields, ibo_group),
+        disc_copies, set),
+    ok = mnesia:wait_for_tables([ibo_user, ibo_group], 5000).
+
+resolve_groups_transactional(StartGroups) ->  % start function of recursion
+    Res = mnesia:transaction(
+        fun() ->
+            resolve_groups_rec(StartGroups, sets:new())    % resolve groups, using the already given groups as the starting point
+        end),
+    case Res of
+        {aborted, Reason} -> {error, Reason};
+        {atomic, Groups} -> Groups
+    end.
+
+resolve_groups_rec([], Accu) -> sets:to_list(Accu);   % no more groups to resolve
+
+resolve_groups_rec([CurrentGroup | OtherGroups], Accu) ->
+    case sets:is_element(CurrentGroup, Accu) of   % when group is in Accu => current group was already resolved, to avoid endless loops
+        true ->
+            resolve_groups_rec(OtherGroups, Accu);
+        false ->
+            NewAccu = sets:add_element(CurrentGroup, Accu),
+            case mnesia:read(ibo_group, CurrentGroup) of
+                [Group] ->
+                    ParentGroups = Group#ibo_group.parents,
+                    NewGroupsToResolve = lists:append(OtherGroups,ParentGroups),    % consider using set instead of list
+                    resolve_groups_rec(NewGroupsToResolve, NewAccu);
+                [] ->
+                    resolve_groups_rec(OtherGroups, NewAccu)    % parent group couldn't be found (= dead group)
+            end
+    end.
 
 search_transactional(SearchString, Table, _ElementPosition) when SearchString =:= "" orelse SearchString =:= <<"">> ->
     Res = mnesia:transaction(

@@ -15,43 +15,30 @@
 
 %% Common Test Framework ---------------------------------------------
 -include_lib("common_test/include/ct.hrl"). % enables ?config(Key, List) to retrieve properties from the Config
--export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1]).
+-export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1, version_counter_test/1]).
 
 %% API
 -export([store_template_test/1, start_template_test/1, retrieve_template_test/1]).
-all() -> [store_template_test, start_template_test, retrieve_template_test].
+all() -> [store_template_test, start_template_test, retrieve_template_test, version_counter_test].
 
 init_per_suite(Config) ->
-    Nodes = [node()],
-    ok = mnesia:create_schema(Nodes),
-    rpc:multicall(Nodes, application, start, [mnesia]),
-    ct_helper:create_table_for_record(ibo_boxdata, record_info(fields, ibo_boxdata), Nodes),
-    ct_helper:create_table_for_record(ibo_boxindex, record_info(fields, ibo_boxindex), Nodes),
-    ct_helper:create_table_for_record(ibo_repo_template, record_info(fields, ibo_repo_template), Nodes),
-
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    mnesia:start(),
-    mnesia:wait_for_tables([ibo_boxdata, ibo_boxindex, ibo_repo_template], 5000),
+    ct_helper:init_mnesia(),
     Config.
 
 end_per_suite(_Config) ->
-    Nodes = [node()],
-    {atomic, ok} = mnesia:delete_table(ibo_boxdata),
-    {atomic, ok} = mnesia:delete_table(ibo_boxindex),
-    {atomic, ok} = mnesia:delete_table(ibo_repo_template),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    ok = mnesia:delete_schema(Nodes).
+    ct_helper:deinit_mnesia().
 
 init_per_testcase(_, Config) -> % first argument = name of the testcase as atom, Config = Property list
-    box_server:start_link(#{name =>?BOX_NAME}),
-    xbo_router:start_link(#{name => ?ROUTER_NAME, allowed => [?BOX_NAME, <<"another_server">>, <<"blub_server">>]}),
-    repo_server:start_link(#{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [<<"my_error_server">>], n => 1 }),
+    box_server:start_link(?BOX_NAME),
+    xbo_router:start_link(?ROUTER_ARGS),
+    repo_server:start_link(?REPO_ARGS),
     Config.
 
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_boxdata),
     mnesia:clear_table(ibo_boxindex),
     mnesia:clear_table(ibo_repo_template),
+    mnesia:clear_table(ibo_repo_template_old),
     box_server:stop(?BOX_NAME),
     xbo_router:stop(?ROUTER_NAME),
     repo_server:stop(?REPO_NAME),
@@ -64,7 +51,7 @@ store_template_test(_Config) ->
     Template = ?TEMPLATE_TESTTEMPLATE1,
 
     0 = ct_helper:get_recordcount_in_table(ibo_repo_template),
-    ok = repo_server:store_template(?REPO_NAME, Template),
+    ok = repo_server:store_template(?REPO_NAME, Template, ?REPO_MANAGEGROUPS),
     1 = ct_helper:get_recordcount_in_table(ibo_repo_template),
     ok.
 
@@ -75,8 +62,8 @@ start_template_test(_Config) ->
     0 = ct_helper:get_recordcount_in_table(ibo_boxdata),
     0 = ct_helper:get_recordcount_in_table(ibo_boxindex),
 
-    ok = repo_server:store_template(?REPO_NAME, Template),
-    ok = repo_server:start_template(?REPO_NAME, User, Template#ibo_repo_template.template),
+    ok = repo_server:store_template(?REPO_NAME, Template, ?REPO_MANAGEGROUPS),
+    ok = repo_server:start_template(?REPO_NAME, [<<"marketing">>], User#ibo_user.username, Template#ibo_repo_template.name),
     ct_helper:wait(),
 
     1 = ct_helper:get_recordcount_in_table(ibo_boxdata),
@@ -88,16 +75,40 @@ retrieve_template_test(_Config) ->
     Template1 = ?TEMPLATE_TESTTEMPLATE1,
     Template2 = ?TEMPLATE_TESTTEMPLATE2,
     Template3 = ?TEMPLATE_TESTTEMPLATE3,
-    ok = repo_server:store_template(?REPO_NAME, Template1),
-    ok = repo_server:store_template(?REPO_NAME, Template2),
-    ok = repo_server:store_template(?REPO_NAME, Template3),
+    ok = repo_server:store_template(?REPO_NAME, Template1, ?REPO_MANAGEGROUPS),
+    ok = repo_server:store_template(?REPO_NAME, Template2, ?REPO_MANAGEGROUPS),
+    ok = repo_server:store_template(?REPO_NAME, Template3, ?REPO_MANAGEGROUPS),
     3 = ct_helper:get_recordcount_in_table(ibo_repo_template),
 
     User = ?MARKETINGUSER,
-    Response = repo_server:get_templatelist(?REPO_NAME, User),
+    Response = repo_server:get_templatelist(?REPO_NAME, User#ibo_user.groups),  % should use directory_server's resolve group!
     2 = length(Response),
     true = lists:member(<<"marketingbudgetdecision">>, Response),
     true = lists:member(<<"malala">>, Response),
     false = lists:member(<<"wuhaha">>, Response),
+    ok.
+
+version_counter_test(_Config) ->    % overwriting an existing template should give the new template a higher version number
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+    Template = ?TEMPLATE_TESTTEMPLATE4,
+
+    ok = repo_server:store_template(?REPO_NAME, Template, ?REPO_MANAGEGROUPS),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+    StoredTemplate1 = db:read_transactional(ibo_repo_template, Template#ibo_repo_template.name),
+    1 = StoredTemplate1#ibo_repo_template.version,
+
+    ok = repo_server:store_template(?REPO_NAME, Template, ?REPO_MANAGEGROUPS),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+    StoredTemplate2 = db:read_transactional(ibo_repo_template, Template#ibo_repo_template.name),
+    2 = StoredTemplate2#ibo_repo_template.version,
+
+    ok = repo_server:store_template(?REPO_NAME, Template, ?REPO_MANAGEGROUPS),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    2 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+    StoredTemplate3 = db:read_transactional(ibo_repo_template, Template#ibo_repo_template.name),
+    3 = StoredTemplate3#ibo_repo_template.version,
 
     ok.

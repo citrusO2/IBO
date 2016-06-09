@@ -27,37 +27,9 @@ install() ->
     mnesia:start().
 
 install(Nodes) ->
-    ok = mnesia:create_schema(Nodes),
-    rpc:multicall(Nodes, application, start, [mnesia]),
-    mnesia:create_table(ibo_user,
-        [{attributes, record_info(fields, ibo_user)},
-            {disc_copies, Nodes},
-            {type, set}]),
-    mnesia:create_table(ibo_group,
-        [{attributes, record_info(fields, ibo_group)},
-            {disc_copies, Nodes},
-            {type, set}]),
-    mnesia:create_table(ibo_boxdata,
-        [{attributes, record_info(fields, ibo_boxdata)},
-            {disc_copies, Nodes},
-            {type, set}]),
-    mnesia:create_table(ibo_boxindex,
-        [{attributes, record_info(fields, ibo_boxindex)},
-            {disc_copies, Nodes},
-            {type, set}]),
-    mnesia:create_table(ibo_repo_template,
-        [{attributes, record_info(fields, ibo_repo_template)},
-            {disc_copies, Nodes},
-            {type, set}]),
-    rpc:multicall(Nodes, application, stop, [mnesia]).
-
+    ok = mnesia:create_schema(Nodes).
 
 uninstall(Nodes) ->
-    mnesia:delete_table(ibo_user),
-    mnesia:delete_table(ibo_group),
-    mnesia:delete_table(ibo_boxdata),
-    mnesia:delete_table(ibo_boxindex),
-    mnesia:delete_table(ibo_repo_template),
     rpc:multicall(Nodes, application, stop, [mnesia]),
     ok = mnesia:delete_schema(Nodes).
 

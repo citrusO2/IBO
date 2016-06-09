@@ -10,10 +10,11 @@
 -author("Florian").
 
 -include("../directory/directory_records.hrl").
+-include("../repo/repo_records.hrl").
 -include("handler_macros.hrl").
 
 -record(state, {
-    type :: undefined | list | start | domain,
+    type :: undefined | list | start | domain | store,
     ibo_user :: #ibo_user{} | undefined,
     templates :: list(nonempty_string()),
     repo_server_name :: binary(),
@@ -58,10 +59,10 @@ forbidden(Req, State) ->
         <<"process">> ->
             case cowboy_req:binding(repo_path, Req) of
                 undefined ->    % = no additional path given
-                    {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, State#state.ibo_user)}};
+                    {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, get_group_memberships(State))}};
                 TemplateName ->
                     % TODO: only check if forbidden first, handle other errors later
-                    case repo_server:start_template(State#state.repo_server_name, State#state.ibo_user, TemplateName) of
+                    case repo_server:start_template(State#state.repo_server_name, get_group_memberships(State), State#state.ibo_user#ibo_user.username, TemplateName) of
                         {error, _Message} ->
                             {true, Req, State#state{type = start}};
                         _Else ->
@@ -70,6 +71,23 @@ forbidden(Req, State) ->
             end;
         <<"domain">> ->
             {false, Req, State#state{type = domain}};
+        <<"template">> ->
+            case cowboy_req:binding(repo_path, Req) of
+                undefined ->    % = no additional path given
+                    {false, Req, State#state{type = store}};    % accessing /template without path is forbidden
+                TemplateName -> % TODO: only check if forbidden first here, do not save it immediately
+                    Body = cowboy_req:body(Req),
+                    TemplateMap = jsx:decode(Body, [return_maps]),
+                    TemplateRecord = helper:map_to_record_strict(TemplateMap, record_info(fields, ibo_repo_template), ibo_repo_template),
+                    TemplateName = TemplateRecord#ibo_repo_template.name,   % testcheck
+                    case repo_server:store_template(State#state.repo_server_name, TemplateRecord, get_group_memberships(State)) of
+                        {error, _Message} ->
+                            {true, Req, State#state{type = store}};
+                        _Else ->
+                            {false, Req, State#state{type = store}}
+                    end
+            end;
+
         _Else ->
 %%            io:format("Error of repo_type ~p~n", [Else]),
 %%            {true, Req, State#state{type = error}}
@@ -98,7 +116,16 @@ json_get(Req, State) when State#state.type =:= domain ->
     Body = jsx:encode(json_helper:prepareXactors(watchdog_server:get_global_xactors())),
     {Body, Req, State}.
 
+json_post(Req, State) when State#state.type =:= store ->
+    cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template stored\"}">>, Req),
+    {true, Req, State};
 json_post(Req, State) when State#state.type =:= start ->
     {ok, _Body, Req2} = cowboy_req:body(Req),
     cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template started\"}">>, Req),
     {true, Req2, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+get_group_memberships(State)->
+    directory_server:resolve_usergroups(State#state.directory_server_name, State#state.ibo_user#ibo_user.groups).

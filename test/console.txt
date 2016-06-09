@@ -115,16 +115,28 @@ RouterArgs = #{name => Router, allowed => [Box]}.
 watchdog_server:start_iactor(xbo_router_sup, RouterArgs).
 
 Repo = <<"REPO1">>.
-RepoArgs = #{name => Repo, router => [Router], error => [Error], n=>1}.
+RepoArgs = #{name => Repo, router => [Router], error => [Error], n=>1, managegroups =>["ACL_Allow_Template_Storing"]}.
 watchdog_server:start_iactor(repo_sup, RepoArgs).
 
 Web = <<"WEB1">>.
 WebArgs = #{name => Web, directory => Directory, box => Box, repo => Repo}.
-watchdog_server:start_iactor(web_sup, WebArgs).
+WebArgs = #{name => Web, directory => Directory, box => Box, repo => Repo}.
 
-directory_server:create_user(Directory, {ibo_user,<<"tu">>,<<"Theodor">>,<<"Urula">>,[<<"marketing">>,<<"admins">>],undefined},<<"pass123">>).
+% rule groups
+directory_server:write_group(Directory, {ibo_group,<<"ACL">>,<<"Access Control List Main Group (Rule Group)">>, []}).
+directory_server:write_group(Directory, {ibo_group,<<"ACL_Allow_Template_Storing">>,<<"Groups allows the storing of templates (Rule Group)">>, [<<"ACL">>]}).
+
+% role groups
+directory_server:write_group(Directory, {ibo_group,<<"acme">>,<<"Main Group of ACME Incorporated">>, []}).
+directory_server:write_group(Directory, {ibo_group,<<"marketing">>,<<"Marketing Department Group">>, [<<"acme">>]}).
+directory_server:write_group(Directory, {ibo_group,<<"it">>,<<"IT Department Group">>, [<<"acme">>]}).
+directory_server:write_group(Directory, {ibo_group,<<"it_admins">>,<<"IT Department's Admin Group">>, [<<"it">>, <<"ACL_Allow_Template_Storing">>]}).
+
+% users
+directory_server:create_user(Directory, {ibo_user,<<"tu">>,<<"Theodor">>,<<"Urula">>,[<<"marketing">>,<<"it_admins">>],undefined},<<"pass123">>).
 directory_server:create_user(Directory, {ibo_user,<<"fu">>,<<"Fabian">>,<<"Ustafa">>,[<<"it">>],undefined},<<"pass123">>).
-directory_server:write_group(Directory, {ibo_group,<<"acme">>,<<"Main Group of ACME Incorporated">>, undefined}).
-directory_server:write_group(Directory, {ibo_group,<<"marketing">>,<<"Marketing Department Group">>, <<"acme">>}).
-directory_server:write_group(Directory, {ibo_group,<<"it">>,<<"Marketing Department Group">>, <<"acme">>}).
-directory_server:write_group(Directory, {ibo_group,<<"admins">>,<<"IT Department Group">>, <<"it">>}).
+
+% useful commands
+watchdog_server:get_iactors().
+watchdog_server:global_xactors().
+watchdog_server:get_global_xactors().

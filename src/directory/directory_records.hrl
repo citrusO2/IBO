@@ -24,7 +24,7 @@
 -record(ibo_group, {
     name :: nonempty_string(),
     description :: nonempty_string(),
-    parent :: string()
+    parents = [] :: [string()]        % direct parents of the group
 }).
 
 -endif. % DIRECTORY_RECORDS_HRL defined

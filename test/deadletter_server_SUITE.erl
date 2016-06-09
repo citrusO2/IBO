@@ -21,22 +21,11 @@
 all() -> [start_deadletter_test, send_to_box_deadrouter_test, send_to_box_deadrouter_restart_test, send_to_deadbox_test,send_to_deadbox_strict_test, shutdown_restart_test].
 
 init_per_suite(Config) ->
-    Nodes = [node()],
-    ok = mnesia:create_schema(Nodes),
-    rpc:multicall(Nodes, application, start, [mnesia]),
-    ct_helper:create_table_for_record(ibo_boxdata, record_info(fields, ibo_boxdata), Nodes),
-    ct_helper:create_table_for_record(ibo_boxindex, record_info(fields, ibo_boxindex), Nodes),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    mnesia:start(),
-    mnesia:wait_for_tables([ibo_boxdata, ibo_boxindex], 5000),
+    ct_helper:init_mnesia(),
     Config.
 
 end_per_suite(_Config) ->
-    Nodes = [node()],
-    {atomic, ok} = mnesia:delete_table(ibo_boxdata),
-    {atomic, ok} = mnesia:delete_table(ibo_boxindex),
-    rpc:multicall(Nodes, application, stop, [mnesia]),
-    ok = mnesia:delete_schema(Nodes).
+    ct_helper:deinit_mnesia().
 
 init_per_testcase(Case, Config) when Case =:= send_to_deadbox_test ; Case =:= send_to_deadbox_strict_test ->
     start_router(?ROUTER_NAME),

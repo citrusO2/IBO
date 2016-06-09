@@ -62,6 +62,7 @@ init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
     Name = maps:get(name, Args),
     io:format("~p (~p) starting~n", [?MODULE, Name]),
+    create_tables_if_nonexistent(),
     {ok, #state{name = Name}}. % initial state
 
 handle_call({process_xbo, XlibState, Error, Destination}, _From, State) ->
@@ -79,28 +80,17 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-store_case(XlibState, Error, Destination) ->
-    store_case(#ibo_errorcase{
-        xlibstate = XlibState,
-        error = Error,
-        destination = Destination
-    }).
+create_tables_if_nonexistent() ->
+    db:create_local_table_if_nonexistent(ibo_errordata,
+        record_info(fields, ibo_errordata),
+        disc_copies, bag),
+    ok = mnesia:wait_for_tables([ibo_errordata], 5000).
 
-store_case(Case) when is_record(Case, ibo_errorcase) ->
-    Id = Case#ibo_errorcase.xlibstate#xlib_state.xbo#ibo_xbo.id,
-    Res = mnesia:transaction(
-        fun() ->
-            case mnesia:wread({ibo_errordata, Id}) of
-                [R] ->
-                    mnesia:write(R#ibo_errordata{
-                        cases = [Case | R#ibo_errordata.cases]
-                    });
-                [] ->
-                    mnesia:write(#ibo_errordata{xboid = Id, cases = [Case]})
-            end
-        end
-    ),
-    case Res of
-        {atomic, ok} -> ok;
-        _ -> {error, "Error Server - Write failure"}
-    end.
+store_case(XlibState, Error, Destination) ->
+    db:write_transactional(
+    #ibo_errordata{
+        xboid = XlibState#xlib_state.xbo#ibo_xbo.id,
+        destination = Destination,
+        error = Error,
+        xlibstate = XlibState
+    }).
