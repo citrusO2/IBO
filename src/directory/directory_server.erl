@@ -26,7 +26,7 @@
 -export([start_link/1, stop/1,
     get_user/2, search_user/2,
     get_group/2, write_group/2, search_group/2, get_all_groups/1,
-    create_user/3, update_user/3, get_user_info/3, resolve_usergroups/2]).
+    create_user/2, create_user/3, update_user/2, update_user/3, get_user_info/3, resolve_usergroups/2]).
 
 %% starts a new global directory server with the given name as the global name
 -spec start_link(Args :: #{name => binary()}) ->  {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -75,10 +75,16 @@ get_all_groups(Directory) ->
 
 %% creates a new user on the given directory and stores the password encrypted. Only creates a user if the username is not yet taken, otherwise there will be a password error or if the password is right, the user gets overwritten
 -spec create_user(Directory :: binary(), User :: #ibo_user{}, Password :: binary()) ->  ok | {error, term()}.
-create_user(Directory, User, Password) ->
+create_user(Directory, User, Password) ->   % syntactic sugar
     gen_server:call({global, Directory}, {create_user, User, Password}).
 
+-spec create_user(Directory :: binary(), User :: #ibo_user{}) ->  ok | {error, term()}.
+create_user(Directory, User) ->
+    gen_server:call({global, Directory}, {create_user, User, User#ibo_user.password}).
+
 %% exactly like create user
+update_user(Directory, User) ->
+    create_user(Directory, User).
 update_user(Directory, User, Password) ->
     create_user(Directory, User, Password).
 
@@ -102,7 +108,6 @@ resolve_usergroups(Directory, Username) when is_binary(Username) ->
         Else -> Else    % propagate error from get_user
     end.
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -114,7 +119,7 @@ init(Args) ->
     {ok, #state{name = Name}}. % 0 = initial state
 
 handle_call({get_user, Username}, _From, S) ->
-    {reply, db:read_transactional(ibo_user, Username), S};
+    {reply, update_userrecord_with_access_to(db:read_transactional(ibo_user, Username)), S};
 handle_call({search_user, SearchString}, _From, S) ->
     {reply, search_transactional(SearchString, ibo_user, 4), S}; % 4 = lastname
 handle_call({get_group, Groupname}, _From, S) ->
@@ -124,9 +129,9 @@ handle_call({write_group, Group}, _From, S) ->
 handle_call({search_group, SearchString}, _From, S) ->
     {reply, search_transactional(SearchString, ibo_group, 2), S}; % 2 = groupname
 handle_call({create_user, User, Password}, _From, S) ->
-    {reply, create_or_update_user(User, Password), S};
+    {reply, create_or_update_user(User#ibo_user{access_to = []}, Password), S}; % remove any possible added access_to value
 handle_call({get_user_info, Username, Password}, _From, S) ->
-    {reply, read_user_info(Username, Password), S};
+    {reply, update_userrecord_with_access_to(read_user_info(Username, Password)), S};
 handle_call({resolve_usergroups, Groups}, _From, S) ->
     {reply, resolve_groups_transactional(Groups), S};
 handle_call(stop, _From, S) ->
@@ -151,8 +156,12 @@ create_tables_if_nonexistent() ->
     db:create_local_table_if_nonexistent(ibo_group,
         record_info(fields, ibo_group),
         disc_copies, set),
+    db:create_local_table_if_nonexistent(ibo_user_cache,
+        record_info(fields, ibo_user_cache),
+        ram_copies, set),
     ok = mnesia:wait_for_tables([ibo_user, ibo_group], 5000).
 
+% resolves all parents of the given groups recursively and returns a list with all groups+all parents
 resolve_groups_transactional(StartGroups) ->  % start function of recursion
     Res = mnesia:transaction(
         fun() ->
@@ -210,6 +219,7 @@ create_or_update_user(User, Password) ->
                 [StoredUser] ->
                     case is_password_correct(StoredUser, Password) of
                         true ->
+                            mnesia:delete(ibo_user_cache,Username, write),  % cache needs to be removed, because there can be an update to the groups here
                             mnesia:write(User#ibo_user{password = create_protected_password(Password)});
                         false ->
                             mnesia:abort("Incorrect password")
@@ -245,6 +255,27 @@ read_user_info(Username, Password) ->
 %%%===================================================================
 %%% Helper functions
 %%%===================================================================
+update_userrecord_with_access_to(#ibo_user{username = Username, groups = Groups} = User) when is_record(User, ibo_user) ->
+    Access_To = case db:read_transactional(ibo_user_cache, Username) of
+        not_found ->
+            get_access_to_and_update_cache(Username, Groups);
+        CacheItem ->
+            case timer:now_diff(os:timestamp(), CacheItem#ibo_user_cache.timestamp) of
+                Difference when Difference >= 900000 -> % = 15mins, 1000*60*15, as Difference is given in ms
+                    get_access_to_and_update_cache(Username, Groups);
+                Difference when Difference < 900000 ->
+                    CacheItem#ibo_user_cache.access_to
+            end
+    end,
+    User#ibo_user{access_to = Access_To};
+update_userrecord_with_access_to(Else) -> Else. % if it's not a user-item, simply return the object
+
+get_access_to_and_update_cache(Username, Groups) ->
+    Access_To = resolve_groups_transactional(Groups),
+    db:write_transactional(#ibo_user_cache{username = Username, access_to = Access_To}),    % automatically overrides old record if old record exists
+    Access_To.
+
+
 -spec is_substring_in_string(nonempty_string(), nonempty_string()) -> boolean().
 is_substring_in_string(Source, Find) when is_binary(Source), is_binary(Find)->
     case binary:match(Source, Find) of

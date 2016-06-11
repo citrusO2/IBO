@@ -49,7 +49,8 @@
     resolve_usergroups_correctresolve_test/1,
     resolve_circular_groups_test/1,
     redundant_groupmembership_test/1,
-    unresolvable_group_test/1]).
+    unresolvable_group_test/1,
+    access_to_test/1]).
 
 all() -> [get_user_test, get_user_fail_test,
     search_user_test,
@@ -61,7 +62,8 @@ all() -> [get_user_test, get_user_fail_test,
     resolve_usergroups_correctresolve_test,
     resolve_circular_groups_test,
     redundant_groupmembership_test,
-    unresolvable_group_test].
+    unresolvable_group_test,
+    access_to_test].
 
 init_per_suite(Config) ->
     application:start(crypto),
@@ -87,7 +89,7 @@ init_per_testcase(resolve_circular_groups_test, Config) ->
     ct_helper:add_records_to_mnesia(?GROUPLIST),
     ct_helper:add_records_to_mnesia(?CIRCULARLIST),
     Config;
-init_per_testcase(Testcase, Config) when Testcase =:= resolve_usergroups_emptygroups_test; Testcase =:= resolve_usergroups_correctresolve_test ->
+init_per_testcase(Testcase, Config) when Testcase =:= resolve_usergroups_emptygroups_test; Testcase =:= resolve_usergroups_correctresolve_test; Testcase =:= access_to_test ->
     directory_server:start_link(?DIRECTORY_ARGS),
     ct_helper:add_records_to_mnesia(?USERLIST),
     ct_helper:add_records_to_mnesia(?GROUPLIST),
@@ -101,6 +103,7 @@ init_per_testcase(_, Config) -> % first argument = name of the testcase as atom,
 end_per_testcase(_, _Config) ->
     mnesia:clear_table(ibo_user),
     mnesia:clear_table(ibo_group),
+    mnesia:clear_table(ibo_user_cache),
     directory_server:stop(?DIRECTORY_NAME).
 
 %%%===================================================================
@@ -194,14 +197,14 @@ create_user_test(_Config) ->
     ct_helper:print_var("Record1", Record1),
     ok = directory_server:create_user(?DIRECTORY_NAME, Record1, Password),
 
-    {ibo_user,<<"dd">>,<<"Doris">>,_,_,_} = Record2 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
+    {ibo_user,<<"dd">>,<<"Doris">>,_,_,_,_} = Record2 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
     ct_helper:print_var("Record2", Record2),
 
     UpdatedUser = Record2#ibo_user{firstname = <<"Daniela">>},
     ct_helper:print_var("UpdatedUser", UpdatedUser),
     directory_server:update_user(?DIRECTORY_NAME, UpdatedUser, Password),
 
-    {ibo_user,<<"dd">>,<<"Daniela">>,_,_,_} = Record3 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
+    {ibo_user,<<"dd">>,<<"Daniela">>,_,_,_,_} = Record3 = directory_server:get_user(?DIRECTORY_NAME, Record1#ibo_user.username),
     ct_helper:print_var("Record3", Record3),
 
     UpdatedUser2 = Record3#ibo_user{firstname = <<"Darsir">>},
@@ -214,7 +217,7 @@ get_user_info(_Config) ->
     ok = directory_server:create_user(?DIRECTORY_NAME, Record1, Password),
     Response1 = directory_server:get_user_info(?DIRECTORY_NAME, Record1#ibo_user.username, Password),
     ct_helper:print_var("Response1",Response1),
-    Response1 = Record1,
+    Record1 = Response1#ibo_user{access_to = []},   % remove check of access_to
     {error, "Wrong password"} = directory_server:get_user_info(?DIRECTORY_NAME, Record1#ibo_user.username, <<"Plubla">>).
 
 %%%===================================================================
@@ -238,6 +241,14 @@ redundant_groupmembership_test(_Config) ->  % test if redundant groupmemberships
 
 unresolvable_group_test(_Config) -> % test to see if server returns only given group when the group cannot be resolved
     check_resolved_groups(tripleresolve_groups(?NOTEXISTENDGROUPUSER), [<<"LazyA__F__KS">>]).
+
+%%%===================================================================
+%%% Check user cache and its access_to resolve
+%%%===================================================================
+access_to_test(_Config) ->
+    check_resolved_groups( (directory_server:get_user(?DIRECTORY_NAME, ?NEWUSER1#ibo_user.username))#ibo_user.access_to, [<<"Marketing">>,<<"ACME_Corporation">>]),
+    check_resolved_groups( (directory_server:get_user(?DIRECTORY_NAME, ?NEWUSER2#ibo_user.username))#ibo_user.access_to, [<<"Marketing">>,<<"ACME_Corporation">>,<<"IT_Interns">>, <<"IT">>]),
+    check_resolved_groups( (directory_server:get_user(?DIRECTORY_NAME, ?NEWUSER3#ibo_user.username))#ibo_user.access_to, [<<"IT_Admins">>, <<"IT">>,<<"ACME_Corporation">>]).
 
 %%%===================================================================
 %%% Internal functions

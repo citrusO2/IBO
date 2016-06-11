@@ -19,7 +19,7 @@
 -export([start/2, stop/1]).
 
 %% API ---------------------------------------------------------------
--export([install/0, install/1, uninstall/1, start_dependencies/0, stop_dependencies/0, installtestdata/0]).
+-export([install/0, install/1, uninstall/1, start_dependencies/0, stop_dependencies/0, install_testdata/0]).
 
 install() ->
     mnesia:stop(),
@@ -49,25 +49,11 @@ stop_dependencies() ->
     application:stop(crypto),
     ok.
 
-installtestdata()->
-    repo_exampletemplates:install(),
-    directory_exampleusers:install(),
-    ok.
+install_testdata()->
+    watchdog_exampleconfig:install(),
+    directory_exampleusers:install(<<"DIRECTORY1">>),
 
-%%start_web() ->
-%%    io:format("cowboy webserver starting~n"),
-%%    Dispatch = cowboy_router:compile([
-%%        {'_', [
-%%            {"/", cowboy_static, {file, "./src/webclient/index.html"}},
-%%            {"/api/box/[:box_path]", box_handler, []},
-%%            {"/api/directory/[:user_path]", directory_handler, []},
-%%            {"/api/repo/[:repo_path]", repo_handler, []},
-%%            {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
-%%        ]}
-%%    ]),
-%%    {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
-%%        [{env, [{dispatch, Dispatch}]}]
-%%    ).
+    ok.
 
 %% ===================================================================
 %% Application callbacks

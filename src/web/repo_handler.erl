@@ -59,10 +59,10 @@ forbidden(Req, State) ->
         <<"process">> ->
             case cowboy_req:binding(repo_path, Req) of
                 undefined ->    % = no additional path given
-                    {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, get_group_memberships(State))}};
+                    {false, Req, State#state{type = list, templates = repo_server:get_templatelist(State#state.repo_server_name, State#state.ibo_user#ibo_user.access_to)}};
                 TemplateName ->
                     % TODO: only check if forbidden first, handle other errors later
-                    case repo_server:start_template(State#state.repo_server_name, get_group_memberships(State), State#state.ibo_user#ibo_user.username, TemplateName) of
+                    case repo_server:start_template(State#state.repo_server_name, State#state.ibo_user#ibo_user.access_to, State#state.ibo_user#ibo_user.username, TemplateName) of
                         {error, _Message} ->
                             {true, Req, State#state{type = start}};
                         _Else ->
@@ -80,7 +80,7 @@ forbidden(Req, State) ->
                     TemplateMap = jsx:decode(Body, [return_maps]),
                     TemplateRecord = helper:map_to_record_strict(TemplateMap, record_info(fields, ibo_repo_template), ibo_repo_template),
                     TemplateName = TemplateRecord#ibo_repo_template.name,   % testcheck
-                    case repo_server:store_template(State#state.repo_server_name, TemplateRecord, get_group_memberships(State)) of
+                    case repo_server:store_template(State#state.repo_server_name, TemplateRecord, State#state.ibo_user#ibo_user.access_to) of
                         {error, _Message} ->
                             {true, Req, State#state{type = store}};
                         _Else ->
@@ -123,9 +123,3 @@ json_post(Req, State) when State#state.type =:= start ->
     {ok, _Body, Req2} = cowboy_req:body(Req),
     cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template started\"}">>, Req),
     {true, Req2, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-get_group_memberships(State)->
-    directory_server:resolve_usergroups(State#state.directory_server_name, State#state.ibo_user#ibo_user.groups).

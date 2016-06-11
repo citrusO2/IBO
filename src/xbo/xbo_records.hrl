@@ -8,10 +8,10 @@
 %%%-------------------------------------------------------------------
 -author("Florian").
 
+-include("../helper/type_specs.hrl").
+
 -ifndef(XBO_RECORDS_HRL).
 -define(XBO_RECORDS_HRL, 1).
-
--type timestamp() :: {non_neg_integer(),non_neg_integer(), non_neg_integer() }.
 
 -record(ibo_xboline, {
     library :: atom(),

@@ -10,7 +10,7 @@
 -author("Florian").
 
 %% API
--export([read_transactional/2, write_transactional/1, is_key_in_table/2, is_table_existing/1, create_local_table_if_nonexistent/4]).
+-export([read_transactional/2, write_transactional/1, delete_transactional/2, is_key_in_table/2, is_table_existing/1, create_local_table_if_nonexistent/4]).
 
 read_transactional(Table, Key) ->
     Res = mnesia:transaction(
@@ -31,6 +31,16 @@ write_transactional(Record) ->
     case Res of
         {atomic, ok} -> ok;
         _ -> {error, "Write failure"}
+    end.
+
+delete_transactional(Table, Key) ->
+    Res = mnesia:transaction(
+        fun() ->
+            mnesia:delete(Table, Key, write)
+        end),
+    case Res of
+        {atomic, ok} -> ok;
+        _ -> {error, "Delete failure"}
     end.
 
 is_key_in_table(Table, Key) ->

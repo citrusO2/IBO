@@ -35,7 +35,8 @@ stop(Webserver) ->
 %%%===================================================================
 init(#{directory := _Directory, box := _Box, repo := _Repo, name := Name} = Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
-    io:format("~p starting~n", [?MODULE]),
+    Name = maps:get(name, Args),
+    io:format("~p (~p) starting~n", [?MODULE, Name]),
 
     Dispatch = cowboy_router:compile([
         {'_', [

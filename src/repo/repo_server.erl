@@ -66,7 +66,8 @@ get_templatelist(Repo, Groups) when is_list(Groups)->
 %%%===================================================================
 init(Args) ->
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
-    io:format("~p starting~n", [?MODULE]),
+    Name = maps:get(name, Args),
+    io:format("~p (~p) starting~n", [?MODULE, Name]),
     create_tables_if_nonexistent(),
     {ok, helper:map_to_server_state_strict(Args,record_info(fields, state))}.   % TODO: persist running ID and only use running ID from Args when no persistent ID is available
 

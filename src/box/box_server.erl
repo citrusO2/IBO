@@ -60,12 +60,12 @@ execute_xbo(Box, XBOid, DataMap) ->  %% TODO: add which User/Machine really exec
     gen_server:call({global, Box}, {execute_xbo, XBOid, DataMap}).
 
 %% retrieves an overview for the given groupnames or the given user
--spec get_boxindices(Box :: binary, Groupnamelist :: nonempty_list(binary()) ) -> [] | [#ibo_boxindex{}] | {error, {nonempty_string(), MnesiaError :: term()}}.%;
-                    %(Box :: binary, User :: #ibo_user{} ) -> [] | [#ibo_boxindex{}] | {error, {nonempty_string(), MnesiaError :: term()}}.
+-spec get_boxindices(Box :: binary, Groupnamelist :: nonempty_list(binary()) ) -> [] | [#ibo_boxindex{}] | {error, {nonempty_string(), MnesiaError :: term()}};
+                    (Box :: binary, User :: #ibo_user{} ) -> [] | [#ibo_boxindex{}] | {error, {nonempty_string(), MnesiaError :: term()}}.
 get_boxindices(Box, GroupNameList) when is_list(GroupNameList) ->
-    gen_server:call({global, Box}, {get_boxindices, GroupNameList}).%;
-%%get_boxindices(Box, User) when is_record(User, ibo_user) ->
-%%    get_boxindices(Box, User#ibo_user.groups).
+    gen_server:call({global, Box}, {get_boxindices, GroupNameList});
+get_boxindices(Box, User) when is_record(User, ibo_user) ->
+    get_boxindices(Box, User#ibo_user.access_to).
 
 %% retrieves the initialisation for the webinterface, which consists of a map with a schema, which is later converted to a json-schema
 -spec get_webinit(Box :: binary(), XBOid :: binary()) -> { GroupName :: binary(), map()} | {error, not_found } | {error, MnesiaError :: term()}.
