@@ -17,6 +17,7 @@
     type :: undefined | list | start | domain | store,
     ibo_user :: #ibo_user{} | undefined,
     templates :: list(nonempty_string()),
+    template_name :: binary(),  % only in step repo_type template & case store
     repo_server_name :: binary(),
     directory_server_name :: binary()
 }).
@@ -74,24 +75,16 @@ forbidden(Req, State) ->
         <<"template">> ->
             case cowboy_req:binding(repo_path, Req) of
                 undefined ->    % = no additional path given
-                    {false, Req, State#state{type = store}};    % accessing /template without path is forbidden
-                TemplateName -> % TODO: only check if forbidden first here, do not save it immediately
-                    Body = cowboy_req:body(Req),
-                    TemplateMap = jsx:decode(Body, [return_maps]),
-                    TemplateRecord = helper:map_to_record_strict(TemplateMap, record_info(fields, ibo_repo_template), ibo_repo_template),
-                    TemplateName = TemplateRecord#ibo_repo_template.name,   % testcheck
-                    case repo_server:store_template(State#state.repo_server_name, TemplateRecord, State#state.ibo_user#ibo_user.access_to) of
-                        {error, _Message} ->
-                            {true, Req, State#state{type = store}};
-                        _Else ->
-                            {false, Req, State#state{type = store}}
-                    end
+                    {true, Req, State#state{type = store}};    % accessing /template without path is forbidden
+                TemplateName ->
+                    Forbidden = not repo_server:has_store_permission(State#state.repo_server_name, State#state.ibo_user),
+                    {Forbidden, Req, State#state{type = store, template_name = TemplateName}}
             end;
 
         _Else ->
 %%            io:format("Error of repo_type ~p~n", [Else]),
 %%            {true, Req, State#state{type = error}}
-            cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"type of repo request has to be process or domain\"}">>, Req),
+            cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"type of repo request has to be process, domain or template\"}">>, Req),
             {stop, Req, State}
     end.
 
@@ -109,6 +102,18 @@ content_types_accepted(Req, State) ->
         {{<<"application">>, <<"json">>, '*'}, json_post}
     ], Req, State}.
 
+json_get(Req, State) when State#state.type =:= store ->
+    case repo_server:get_template(State#state.repo_server_name, State#state.template_name) of
+        not_found ->
+            cowboy_req:reply(404,[{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be found\"}">>, Req),
+            {true, Req, State};
+        {error, _Message} ->
+            cowboy_req:reply(500,[{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"error retrieving template\"}">>, Req),
+            {true, Req, State};
+        Template ->
+            Body = jsx:encode( json_helper:prepare(Template)),
+            {Body, Req, State}
+    end;
 json_get(Req, State) when State#state.type =:= list ->
     Body = jsx:encode(State#state.templates),
     {Body, Req, State};
@@ -117,8 +122,30 @@ json_get(Req, State) when State#state.type =:= domain ->
     {Body, Req, State}.
 
 json_post(Req, State) when State#state.type =:= store ->
-    cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template stored\"}">>, Req),
-    {true, Req, State};
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    TemplateMap = jsx:decode(Body, [return_maps]),
+    TemplateRecord = json_helper:prepareTemplate(TemplateMap, State#state.ibo_user#ibo_user.username),% helper:map_to_record_strict(TemplateMap, record_info(fields, ibo_repo_template), ibo_repo_template),
+    if
+        State#state.template_name == TemplateRecord#ibo_repo_template.name ->
+            case json_helper:checkTemplate(TemplateRecord) of
+                {error, Reason} ->
+                    io:format("Error storing template, reason: ~p~n", [Reason]),
+                    cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be stored, check template failed\"}">>, Req2);
+                true ->
+                    case repo_server:store_template(State#state.repo_server_name, TemplateRecord, State#state.ibo_user#ibo_user.access_to) of
+                        {error, _Message} ->
+                            io:format("Error storing template, message: ~p~n", [_Message]),
+                            cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be stored, error in template\"}">>, Req2);
+                        _Else ->
+                            cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template stored successfully\"}">>, Req2)
+                    end
+            end;
+        State#state.template_name /= TemplateRecord#ibo_repo_template.name ->
+            io:format("Error, template_name url and template name do not match~n"),
+            cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be stored, error in template\"}">>, Req2)
+    end,
+    {true, Req2, State};
+
 json_post(Req, State) when State#state.type =:= start ->
     {ok, _Body, Req2} = cowboy_req:body(Req),
     cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template started\"}">>, Req),

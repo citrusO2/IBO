@@ -155,7 +155,7 @@
             $scope.startprocess = function(processName){
                 var r = confirm("Start process \""+processName+"\"?");
                 if(r == true){
-                    $http.post('/api/repo/process'+processName,processName,AuthService.currentHeader()).then(
+                    $http.post('/api/repo/process/'+processName,processName,AuthService.currentHeader()).then(
                         function(res){$scope.success = "Process started successfully";},
                         function(res){$scope.error = res.data.error;}
                     );
@@ -177,13 +177,14 @@
             $scope.schema = getEmptySchema();
             $scope.condition = {};
             $scope.vars = {};
+            $scope.templateSettings = {};
             var iid = 0;    //internal running id to link steps
             var vid = 0;    //internal running id to link variables
 
             // get all groups from the directory actor
             AuthService.getGroups(
                 function(res){
-                    $scope.groups = res.data;
+                    $scope.groups = res.data.filter(function(group){return (group.is_rulegroup == false);});    // only role groups
                 }, function(res){
                     $scope.error = "Could not retrieve usergroups! ";
                     if(res.status == 500)
@@ -358,7 +359,7 @@
                         command: 'init',
                         library: $scope.currentStep.domain.info.init,
                     };
-                    console.log($scope.editStep.initCommand);
+                    //console.log($scope.editStep.initCommand);
                 } else if($scope.editStep.initCommand != null && $scope.editStep.domain.info.init != null){
                     $scope.editStep.initCommand = angular.copy($scope.currentStep.initCommand);
                 }
@@ -451,9 +452,21 @@
                 }
             };
 
-            $scope.saveTemplate = function(){
-                //console.log(getExportTemplate());
+            $scope.openSaveTemplateDialog = function(){
                 $('#templateSettingsModal').modal('show');
+            }
+            $scope.saveTemplate = function(){
+                try{
+                    var t = getExportTemplate();
+
+                    $http.post('/api/repo/template/'+ t.name, t, AuthService.currentHeader()).then(
+                        function(res){$scope.success = "Template stored successfully";},
+                        function(res){$scope.error = res.data.error;}
+                    );
+                } catch(err){
+                    $scope.error = "Error in template, saving not possible";
+                }
+                $('#templateSettingsModal').modal('hide');
             }
 
             function getStepByIID(iid){
@@ -495,7 +508,7 @@
                         return i+1;
                 }
                 if(transition.attributes.target.id == endState.id)
-                    return 0;
+                    return "finish";
 
                 throw "no destination identifier "
             }
@@ -755,13 +768,22 @@
                 return Step.domain.info.libraries[libName][commandName].args[argIndex].type
             }
 
+            function getExportTemplateGroupNames(){
+                var g = [];
+                for(var i = 0; i < $scope.templateSettings.groups.length; i++){
+                    g.push($scope.templateSettings.groups[i].name);
+                }
+                return g;
+            }
+
             function getExportTemplate(){
                 return {
-                    name: "mytemplatename",
-                    version: 1,
-                    ttl: 60*60*24*14, // ttl in seconds
+                    name: $scope.templateSettings.name,
+                    description: $scope.templateSettings.description,
+                    version: 1, // not used, gets set automatically on the serverside
+                    ttl: $scope.templateSettings.ttl, // ttl in seconds
                     steps: getExportSteps(),
-                    groups: ["group1", "group2"],
+                    groups:  getExportTemplateGroupNames(),
                     startstepnr: getStepNrByIID($scope.startStep.iid),
                     startdestination: getStepByIID($scope.startStep.iid).domain.name,
                     gui: {
@@ -775,7 +797,7 @@
                         // -endState.attributes.position.x /.y
 
             function getGuiSteps(){
-                var gs = [];
+                var gs = [];    //guisteps
                 for(var i = 0; i < $scope.steps.length; i++){
                     var v = [];
                     var transitions = $scope.steps[i].umlTransitions;
@@ -830,7 +852,10 @@
                     var type = getArgType(Step, Library, Command, i);
                     switch(type){
                         case "integer":
-                            a.push(Args[i]);
+                            if(Library == "xlib_basic" && Command == "cjump")   //TODO: create own data type for command-nr
+                                a.push(Args[i] + 1);
+                            else
+                                a.push(Args[i]);
                             break;
                         case "step": //redirect to index of step, instead of internal id
                             a.push(getStepNrByIID(Args[i]));    // step consists of first the new StepNr that should be executed and second of the destination name

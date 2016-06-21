@@ -28,7 +28,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/1, start_template/4, start_template/5, store_template/3, get_templatelist/2]).
+-export([start_link/1, stop/1, start_template/4, start_template/5, store_template/3, get_templatelist/2, get_template/2, has_store_permission/2]).
 
 %% starts a new global repo server with its name
 -spec start_link(Args :: #{name => binary(), router => nonempty_list(binary()), error => nonempty_list(binary()), n => non_neg_integer(), managegroups => [binary()]}) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -61,6 +61,19 @@ start_template(Repo, Groups, Creator, TemplateName) ->
 get_templatelist(Repo, Groups) when is_list(Groups)->
     gen_server:call({global,Repo}, {get_templatelist, Groups}).
 
+%% retrieves a template by its template name
+-spec get_template(Repo :: binary(), TemplateName :: binary()) -> #ibo_repo_template{} | not_found | {error, term()}.
+get_template(Repo, TemplateName) ->
+    gen_server:call({global, Repo}, {get_template, TemplateName}).
+
+%% gets information if any of the given groups is allowed to store a template
+-spec has_store_permission(Repo :: binary(), Groups :: [binary()]) -> boolean();
+                          (Repo :: binary(), User :: #ibo_user{}) -> boolean().
+has_store_permission(Repo, Groups) when is_list(Groups) ->
+    gen_server:call({global,Repo}, {has_store_permission, Groups});
+has_store_permission(Repo, User) when is_record(User, ibo_user) ->
+    has_store_permission(Repo, User#ibo_user.access_to).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -90,6 +103,10 @@ handle_call({store_template, Template, Groups}, _From, State) ->
     {reply, Reply, State};
 handle_call({get_templatelist, Groups}, _From, State) ->
     {reply, get_templatelist_for_groups(Groups), State};
+handle_call({has_store_permission, Groups}, _From, State) ->
+    {reply, helper:has_group_permission(Groups, State#state.managegroups), State};
+handle_call({get_template, TemplateName}, _From, State) ->
+    {reply, db:read_transactional(ibo_repo_template, TemplateName), State};
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
@@ -132,11 +149,13 @@ get_templatelist_for_groups(Groups) ->
     Res = mnesia:transaction(
         fun() ->
             Q = qlc:q([ R#ibo_repo_template.name || R <- mnesia:table(ibo_repo_template),
-                G <- Groups, lists:member(G, R#ibo_repo_template.groups)]),
+                G <- Groups, lists:member(G, R#ibo_repo_template.groups)], {unique, true}),
             qlc:e(Q)
         end),
     case Res of
-        {atomic, X} when is_list(X) -> X;
+        {atomic, X} when is_list(X) ->
+            io:format("groups: (~p)~ntemplates: (~p)~n", [Groups, X]),
+            X;
         Err -> {error, {"Failed to retrieve templates", Err}}
     end.
 
@@ -147,6 +166,8 @@ create_xbo_response(Template, Groups, Creator, Args, State) -> %% TODO: put in a
             case transform_xbo(XBO, Template#ibo_repo_template.transform, Args) of
                 {ok, NewXBO} ->
                     send_xbo_response(NewXBO, Template, State);
+                {no_change, OldXBO} ->
+                    send_xbo_response(OldXBO, Template, State);
                 {error, Msg} ->
                     {reply, {error, Msg}, State}
             end;
@@ -163,13 +184,15 @@ send_xbo_response(XBO, Template, State) ->
             {reply, {error, Reason}, State}
     end.
 
-transform_xbo(XBO, TransformFun, Args) ->
+transform_xbo(XBO, TransformFun, Args) when is_function(TransformFun, 2) ->
     case TransformFun(XBO, Args) of
         NewXBO when is_record(NewXBO, ibo_xbo) ->
             {ok, NewXBO};
         _Else ->
             {error, "XBO couldn't be transformed"}
-    end.
+    end;
+transform_xbo(XBO, _TransformFun, _Args) ->
+    {no_change, XBO}.
 
 create_xbo(Template, State, Creator) when is_record(Template, ibo_repo_template) ->
     CurrentTime = os:timestamp(),

@@ -10,7 +10,7 @@
 -author("Florian").
 
 %% API
--export([map_to_record_strict/3, map_to_record_lenient/3, map_to_server_state_strict/2,map_to_server_state_lenient/2, are_lists_disjoint/2, has_group_permission/2, binary_list_to_string/2]).
+-export([map_to_record_strict/3, map_to_record_lenient/3, map_to_server_state_strict/2,map_to_server_state_lenient/2, map_to_record_lenient_atombin/3, are_lists_disjoint/2, has_group_permission/2, binary_list_to_string/2]).
 
 %% creates the internal server state from a given map
 -spec map_to_server_state_strict(Map :: map(), RecordInfo :: tuple() ) -> tuple().  % return type says tuple, but it is of record type '#state{}'
@@ -36,6 +36,12 @@ map_to_record_strict(Map, RecordInfo, RecordName) ->
 map_to_record_lenient(Map, RecordInfo, RecordName) ->
     lists:foldl(fun(Elem, AccIn) ->
         Value = maps:get(Elem, Map, undefined),
+        erlang:append_element(AccIn,Value)
+                end,{RecordName},RecordInfo).
+
+map_to_record_lenient_atombin(Map, RecordInfo, RecordName) ->
+    lists:foldl(fun(Elem, AccIn) ->
+        Value = maps:get(list_to_binary(atom_to_list(Elem)), Map, undefined),
         erlang:append_element(AccIn,Value)
                 end,{RecordName},RecordInfo).
 

@@ -9,12 +9,11 @@
 -author("Florian").
 
 -include("../xbo/xbo_records.hrl").
+-include("../helper/type_specs.hrl").
 
 -ifndef(REPO_RECORDS_HRL).
 -define(REPO_RECORDS_HRL, 1).
 
-
--type point() :: {integer(), integer()}.
 
 -record(ibo_repo_gui_transition, {
     destination :: finish | non_neg_integer(),  % the destination of the step (either stepnr or
@@ -33,11 +32,12 @@
 }).
 
 -record(ibo_repo_template, {
-    name :: binary(),                  % unique xbo template name
+    name :: binary(),                               % unique xbo template name
+    description :: binary(),
     version :: non_neg_integer(),
     ttl :: non_neg_integer(),                       % timespan in seconds for how long the xbo is valid
     steps :: nonempty_list(#ibo_xbostep{}),
-    groups :: nonempty_list(binary()),     % groups which may start the template
+    groups :: nonempty_list(binary()),              % groups which may start the template
     startstepnr :: non_neg_integer(),
     startdestination :: binary(),
     created_by :: binary(),

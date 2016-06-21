@@ -12,7 +12,17 @@
                         <input id="templateSettingsName" required data-ng-model="templateSettings.name" type="text" class="form-control" placeholder="My Template Name">
                     </div>
                     <div class="form-group">
-                        <label for="templateSettingsTTL">Time to live of the generated IBOs in seconds</label>
+                        <label for="templateSettingsDescription">Description of the template</label>
+                        <textarea rows="3" style="resize:vertical" id="templateSettingsDescription" required data-ng-model="templateSettings.description" class="form-control"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="templateSettingsTTL">
+                            Time to live of the generated IBOs in seconds
+                            <button class="button btn-link" data-ng-click="templateSettings.ttl = 3600">(1hour)</button>
+                            <button class="button btn-link" data-ng-click="templateSettings.ttl = 86400">(1day)</button>
+                            <button class="button btn-link" data-ng-click="templateSettings.ttl = 604800">(1week)</button>
+                            <button class="button btn-link" data-ng-click="templateSettings.ttl = 1209600">(2weeks)</button>
+                        </label>
                         <input id="templateSettingsTTL" required data-ng-model="templateSettings.ttl" type="number" step="1" data-ng-pattern="/^(0|\-?[1-9][0-9]*)$/" class="form-control" placeholder="1209600">
                     </div>
                     <div class="form-group">
@@ -31,7 +41,7 @@
                 </div><!-- end modal-body -->
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button data-ng-disabled="templateSettingsForm.$invalid" type="submit" class="btn btn-primary" data-ng-click="">Save</button>
+                    <button data-ng-disabled="templateSettingsForm.$invalid" type="submit" class="btn btn-primary" data-ng-click="saveTemplate()">Save</button>
                 </div>
             </form>
         </div>

@@ -12,5 +12,6 @@
 -define(TYPE_SPECS_HRL, 1).
 
 -type timestamp() :: {non_neg_integer(),non_neg_integer(), non_neg_integer() }.
+-type point() :: {integer(), integer()}.
 
 -endif. % DIRECTORY_RECORDS_HRL defined

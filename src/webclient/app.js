@@ -135,13 +135,16 @@
     iboApp.factory('SchemaV4Service', [ function() {
         //creates the actual json schema used later by client+server
         var createSchemaV4 = function(Schema){
-            return {
+            var Schema = {
                 title: Schema.title,
                 description: Schema.description,
                 type: 'object',
                 properties: createSchemaV4properties(Schema.variables),
                 required: getRequiredVariableNames(Schema.variables)
             }
+            if(Schema.required.length == 0)
+                delete Schema.required;
+            return Schema;
         }
 
         function createSchemaV4properties(variables){

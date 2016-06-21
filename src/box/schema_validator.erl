@@ -52,9 +52,9 @@ validate_keyvalue(?TYPE, Type, _CMap) ->
     ?MUSTBEPRIMITIVETYPE(Type);
 validate_keyvalue(?REQUIRED, List, CMap) ->
     ?MUSTBELIST(List,"required") andalso ?ATLEASTONE(List, "required") andalso
-        ?ALLOFTYPEBINARY(List, "required") andalso ?UNIQUE(List, "required") andalso
-        ?CT("required elements must match the keys in properties", List, lists:all(fun(E) ->
-            lists:member(E, List) end, maps:keys(maps:get(?PROPERTIES, CMap))));    % required has to match the keys in properties (NOT IN THE DRAFT!!)
+        ?ALLOFTYPEBINARY(List, "required") andalso ?UNIQUE(List, "required")
+        andalso ?CT("required elements must match the keys in properties", List, lists:all(fun(E) ->
+            lists:member(E, maps:keys(maps:get(?PROPERTIES, CMap))) end, List));    % required has to match the keys in properties (NOT IN THE DRAFT!!)
 validate_keyvalue(?ENUM, List, _CMap) ->
     ?MUSTBELIST(List, "enum") andalso ?ATLEASTONE(List, "enum") andalso ?UNIQUE(List, "enum");
 validate_keyvalue(?MINLENGTH, Length, _CMap) ->

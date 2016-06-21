@@ -22,9 +22,9 @@
 % represents an individual step executed at a specific machine
 % the machine itself is not specified in the step! -> easier routing
 -record(ibo_xbostep, {
-    domain :: nonempty_string(),                % identifier for the system where the step should be executed
-    local :: nonempty_string() | none(),        % for possible further division (e.g. to deliver to the right input-box)
-    description :: nonempty_string(),           % description of step
+    domain :: binary(),                % identifier for the system where the step should be executed
+    local :: binary() | undefined,        % for possible further division (e.g. to deliver to the right input-box)
+    description :: binary(),           % description of step
     commands :: nonempty_list(#ibo_xboline{})
 }).
 

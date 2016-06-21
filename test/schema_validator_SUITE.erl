@@ -47,6 +47,7 @@ validate_schema_test(_Config) ->
     TS10 = ?TESTSCHEMA10,
     TS11 = ?TESTSCHEMA11,
     TS12 = ?TESTSCHEMA12,
+    TS13 = ?TESTSCHEMA13,
 
     {ok, TS1} = schema_validator:validate_schema(TS1),
     {error, {"description must be of type binary", 2312}} = schema_validator:validate_schema(TS2),
@@ -59,7 +60,8 @@ validate_schema_test(_Config) ->
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS9}} = schema_validator:validate_schema(TS9),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS10}} = schema_validator:validate_schema(TS10),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS11}} = schema_validator:validate_schema(TS11),
-    {ok, TS12} = schema_validator:validate_schema(TS12).
+    {ok, TS12} = schema_validator:validate_schema(TS12),
+    {ok, TS13} = schema_validator:validate_schema(TS13).
 
 validate_schema_data_test(_Config) ->
     Data1 = #{<<"reason">> => <<"DecisionReason">>, <<"yesno">> => <<"yes">>},
@@ -97,7 +99,10 @@ validate_schema_data_test(_Config) ->
     Data9 = #{<<"reason">> =>#{<<"properties">> => <<"DecisionReason">>}, <<"yesno">> => <<"yes">>},
     Value9 = #{<<"properties">> => <<"DecisionReason">>},
     ResSchema9 = ResSchema5,
-    {error, {"field \"type\" requires the type object", {ResSchema9, Value9}}} = schema_validator:validate_data(?TESTSCHEMA1, Data9).
+    {error, {"field \"type\" requires the type object", {ResSchema9, Value9}}} = schema_validator:validate_data(?TESTSCHEMA1, Data9),
+
+    Data10 = #{ <<"yesno">> => <<"yes">>},
+    {ok, Data10} = schema_validator:validate_data(?TESTSCHEMA13, Data10).
 
 validate_json_schema_testsuite(_Config) ->
     {ok, Files} = file:list_dir("./../../test/json-testsuite/"),

@@ -81,7 +81,7 @@ forbidden(Req, State) ->
                 Data ->
 %%                    io:format("Data>>>~p~n", [Data]),
                     {Group, Args} = Data,
-                    case lists:member(Group, NewState#state.ibo_user#ibo_user.groups) of
+                    case lists:member(Group, NewState#state.ibo_user#ibo_user.access_to) of
                         true ->
                             {false, Req, NewState#state{type = detail, ibo_boxdetail = Args}};
                         false ->

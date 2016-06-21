@@ -318,3 +318,24 @@
         },
         <<"required">> => [<<"reason">>, <<"yesno">>]
     }).
+
+-define(TESTSCHEMA13, % only one required element
+    #{
+        <<"title">> => <<"Marketing Budget - Decision">>,
+        <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+        <<"type">> => <<"object">>,
+        <<"properties">> => #{
+            <<"reason">> => #{
+                <<"title">> => <<"Reason">>,
+                <<"description">> => <<"The reason for your decision">>,
+                <<"type">> => <<"string">>
+            },
+            <<"yesno">> => #{
+                <<"title">> => <<"Decide">>,
+                <<"description">> => <<"tick your decision">>,
+                <<"type">> => <<"string">>,
+                <<"enum">> => [<<"no">>, <<"yes">>, <<"maybe">>]
+            }
+        },
+        <<"required">> => [<<"yesno">>]
+    }).

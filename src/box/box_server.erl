@@ -280,6 +280,7 @@ internal_check_xbo(#ibo_xbo{id = XBOid} = XBO, StepNr) ->
                 true -> {error, "XBO is already in Table"}
             end;
         {error, {ReasonText, _}} ->
+            io:format("Invalid Schema: ~p~n", [lists:nth(1, Line#ibo_xboline.args)]),
             {error, "The first element in args of the first command must be a valid schema: " ++ ReasonText}
     end.
 

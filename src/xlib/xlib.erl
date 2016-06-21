@@ -14,10 +14,16 @@
 %% API
 -export([start/1]).
 -export([check_xbo/4]).
+-export([get_libs/0]).
 
 -export([next/1, get_current_command/1, get_current_step/1]).
 
-
+%% function which returns all available libs and commands
+get_libs() ->
+    #{
+        xlib_basic => xlib_basic:xlib_info(),
+        xlib_box => xlib_box:xlib_info()
+    }.
 
 %% function to start execution of an xlib_state
 start(State) ->
