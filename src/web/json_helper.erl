@@ -80,14 +80,14 @@ prepareXactors(Xactor) when is_tuple(Xactor) ->
 
 %check finished template
 checkTemplate(Template) ->
-    checkTemplateRecord(Template).
-%%    try checkTemplateRecord(Template) of
-%%        true -> true
-%%    catch
-%%        _Exception:Error->
-%%            io:format("check error: ~p~n~p~n", [_Exception, Error]),
-%%            {error, "Template check failed: " ++ Error}
-%%    end.
+%%    checkTemplateRecord(Template).
+    try checkTemplateRecord(Template) of
+        true -> true
+    catch
+        _Exception:Error->
+            io:format("check error: ~p~n~p~n", [_Exception, Error]),
+            {error, "Template check failed: " ++ Error}
+    end.
 
 checkTemplateRecord(R) when is_record(R, ibo_repo_template) ->
     throw_if_false(is_binary(R#ibo_repo_template.name), "template name must be binary"),

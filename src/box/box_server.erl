@@ -90,7 +90,7 @@ init(Args) ->
     {ok, #state{domain = Name}}. % initial state
 
 handle_call({process_xbo, XBO, StepNr}, _From, State) ->
-    case xlib:check_xbo(XBO, StepNr, State#state.domain, xlib_info()) of
+    case xlib_check:check_xbo_step(XBO, StepNr, State#state.domain, xlib_info()) of
         ok ->
             case internal_check_xbo(XBO, StepNr) of
                 ok -> {reply, store_xbo(XBO, StepNr), State};
@@ -102,6 +102,8 @@ handle_call({process_xbo, XBO, StepNr}, _From, State) ->
             io:format("error processing xbo, check_xbo failed: ~p~n", [ErrorReason]),
             {reply, {error,{check_xbo,ErrorReason}}, State}
     end;
+handle_call(xlib_info, _From, State) -> % needed for repo's template checks
+    {reply, xlib_info(), State};
 handle_call({get_boxindices, GroupNameList}, _From, State) ->
     {reply, read_boxindices(GroupNameList), State};
 handle_call({get_webinit, XBOid}, _From, State) ->

@@ -45,4 +45,9 @@
     transform = fun (XBO,_Args) -> XBO end :: fun( (#ibo_xbo{}, Args :: [] | any()) -> #ibo_xbo{})  % default = no transformation
 }).
 
+-record(ibo_repo_server, {
+    name :: binary(),
+    n = 1 :: non_neg_integer()
+}).
+
 -endif. % REPO_RECORDS_HRL defined

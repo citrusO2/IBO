@@ -41,7 +41,7 @@ init(State) ->
     case length(Args) of
         1 ->
             [Taskdetails|_] = Args;
-        2 ->
+        2 ->    % possible to use a transformation function for the second argument (only possible when template is defined via erlang code)
             [Taskdetailstemplate|_] = Args,
             TransformFun = lists:nth(2, Args),  % Function which transforms the Taskdetailstemplate into the actual taskdetails
             Taskdetails = TransformFun(Taskdetailstemplate, State#xlib_state.xbo#ibo_xbo.stepdata)

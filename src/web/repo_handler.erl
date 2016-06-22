@@ -130,12 +130,12 @@ json_post(Req, State) when State#state.type =:= store ->
             case json_helper:checkTemplate(TemplateRecord) of
                 {error, Reason} ->
                     io:format("Error storing template, reason: ~p~n", [Reason]),
-                    cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be stored, check template failed\"}">>, Req2);
+                    cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], list_to_binary([<<"{\"error\": \"template could not be stored, error in template: ">>,list_to_binary(Reason), <<"\"}">>]), Req2);
                 true ->
                     case repo_server:store_template(State#state.repo_server_name, TemplateRecord, State#state.ibo_user#ibo_user.access_to) of
-                        {error, _Message} ->
-                            io:format("Error storing template, message: ~p~n", [_Message]),
-                            cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be stored, error in template\"}">>, Req2);
+                        {error, Message} ->
+                            io:format("Error storing template, message: ~p~n", [Message]),
+                            cowboy_req:reply(422, [{<<"content-type">>, <<"application/json">>}], list_to_binary([<<"{\"error\": \"template could not be stored, error in template: ">>,list_to_binary(Message), <<"\"}">>]), Req2);
                         _Else ->
                             cowboy_req:reply(200, [{<<"content-type">>, <<"application/json">>}], <<"{\"success\": \"template stored successfully\"}">>, Req2)
                     end

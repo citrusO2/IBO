@@ -63,8 +63,8 @@
             }, #ibo_xboline{library = xlib_basic, command = cjump, args = [4, fun(StepData, _OtherStepData) ->
                 case maps:find(<<"yesno">>, StepData#ibo_xbostepdata.vars) of {ok, <<"yes">>} -> true; _Else ->
                     false end end]},
-            #ibo_xboline{library = xlib_basic, command = send, args = [1, "box_server"]},
-            #ibo_xboline{library = xlib_basic, command = send, args = [2, "box_server"]}
+            #ibo_xboline{library = xlib_basic, command = send, args = [1, <<"box_server">>]},
+            #ibo_xboline{library = xlib_basic, command = send, args = [2, <<"box_server">>]}
         ]},
     #ibo_xbostep{
         domain = ?BOX_NAME,

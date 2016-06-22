@@ -19,6 +19,7 @@
     error :: nonempty_list(binary()),       % list of error handling servers
     name :: binary(),                       % name, which is also the prefix before the ID so that there is no clash when having several repo servers
     n :: non_neg_integer(),                 % running number for ID-Generation
+    r :: non_neg_integer(),                 % running restart number for ID-Generation, so that no running ID needs to be stored, only once for the repo-server startup
     managegroups :: nonempty_list(binary()) % list of groups who are allowed to store templates
 }).
 
@@ -82,7 +83,8 @@ init(Args) ->
     Name = maps:get(name, Args),
     io:format("~p (~p) starting~n", [?MODULE, Name]),
     create_tables_if_nonexistent(),
-    {ok, helper:map_to_server_state_strict(Args,record_info(fields, state))}.   % TODO: persist running ID and only use running ID from Args when no persistent ID is available
+    Args2 = maps:put(r, update_restartcounter(Name), Args),
+    {ok, helper:map_to_server_state_strict(Args2,record_info(fields, state))}.
 
 handle_call({start_template, Groups, Creator, TemplateName, Args}, _From, State) ->
     case db:read_transactional(ibo_repo_template, TemplateName) of
@@ -96,7 +98,10 @@ handle_call({start_template, Groups, Creator, TemplateName, Args}, _From, State)
 handle_call({store_template, Template, Groups}, _From, State) ->
     Reply = case helper:has_group_permission(Groups, State#state.managegroups) of
         true ->
-            store_and_backup_template(Template);
+            case xlib_check:check_repo_template_steps(Template#ibo_repo_template.steps) of
+                ok -> store_and_backup_template(Template);
+                {error, Error} -> {error, Error}
+            end;
         false ->
             {error, "No group of the given groups (" ++ helper:binary_list_to_string(Groups, <<", ">>) ++ ") is allowed to store templates"}
     end,
@@ -127,7 +132,27 @@ create_tables_if_nonexistent() ->
     db:create_local_table_if_nonexistent(ibo_repo_template_old,
         record_info(fields, ibo_repo_template),
         disc_only_copies, bag), % disc only, as holding also the old templates in ram is unnecessary
-    ok = mnesia:wait_for_tables([ibo_repo_template, ibo_repo_template_old], 5000).
+    db:create_local_table_if_nonexistent(ibo_repo_server,
+        record_info(fields, ibo_repo_server),
+        disc_copies, set),
+    ok = mnesia:wait_for_tables([ibo_repo_template, ibo_repo_template_old, ibo_repo_server], 5000).
+
+update_restartcounter(ServerName) ->
+    Res = mnesia:transaction(
+        fun() ->
+            case mnesia:wread({ibo_repo_server, ServerName}) of
+                [R] ->  % there is already a repo_server with the same name
+                    mnesia:write(#ibo_repo_server{name = ServerName, n = (R#ibo_repo_server.n + 1)}),
+                    R#ibo_repo_server.n + 1;
+                [] ->
+                    mnesia:write(#ibo_repo_server{name = ServerName, n = 1}),
+                    1
+            end
+        end),
+    case Res of
+         {atomic, N} -> N;
+         {aborted, Reason} -> {error, Reason}
+    end.
 
 store_and_backup_template(Template) ->
     Res = mnesia:transaction(
@@ -197,7 +222,7 @@ transform_xbo(XBO, _TransformFun, _Args) ->
 create_xbo(Template, State, Creator) when is_record(Template, ibo_repo_template) ->
     CurrentTime = os:timestamp(),
     #ibo_xbo{
-        id = binary:list_to_bin([State#state.name, <<"-">>, integer_to_list(State#state.n)]),
+        id = binary:list_to_bin([State#state.name, <<"-">>, integer_to_list(State#state.r), <<"-">>, integer_to_list(State#state.n)]),
         ttl = add_seconds_to_timestamp(CurrentTime, Template#ibo_repo_template.ttl),
         create_time = CurrentTime,
         created_by = Creator,
