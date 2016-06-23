@@ -19,7 +19,8 @@
     templates :: list(nonempty_string()),
     template_name :: binary(),  % only in step repo_type template & case store
     repo_server_name :: binary(),
-    directory_server_name :: binary()
+    directory_server_name :: binary(),
+    web_server_name :: binary()
 }).
 
 %% API ---------------------------------------------------------------
@@ -35,26 +36,28 @@
 init(Req, Opts) ->
     Repo = maps:get(repo, Opts),
     Directory = maps:get(directory, Opts),
-    {cowboy_rest, Req, #state{repo_server_name = Repo, directory_server_name = Directory}}.
+    WebServer = maps:get(name, Opts),
+    {cowboy_rest, Req, #state{repo_server_name = Repo, directory_server_name = Directory, web_server_name = WebServer}}.
 
 %% Allowed Methods ---------------------------------------------------
 allowed_methods(Req, State) ->
     {[<<"GET">>, <<"HEAD">>, <<"OPTIONS">>, <<"POST">>], Req, State}.
 
-%% Authentication ----------------------------------------------------
-is_authorized(Req, State) ->
-    case cowboy_req:parse_header(<<"authorization">>, Req) of
-        {basic, UserID, Password} ->
-            case directory_server:get_user_info(State#state.directory_server_name, UserID,Password) of
-                User when is_tuple(User) andalso element(1,User) =:= ibo_user ->
-                    {true, Req, State#state{ibo_user = User}};
-                _ ->
-                    {{false, <<"Basic realm=\"cowboy\"">>}, Req, State}
-            end;
-        _ ->
-            {{false, <<"Basic realm=\"cowboy\"">>}, Req, State}
-    end.
+%%%===================================================================
+%%% General functions
+%%%===================================================================
+content_types_provided(Req, State) ->
+    general_handler:content_types_provided(Req, State).
 
+content_types_accepted(Req, State) ->
+    general_handler:content_types_accepted(Req, State).
+
+is_authorized(Req, State) ->
+    general_handler:is_authorized(Req, State, State#state.directory_server_name, State#state.web_server_name).
+
+%%%===================================================================
+%%% Handler implementations
+%%%===================================================================
 forbidden(Req, State) ->
     case cowboy_req:binding(repo_type, Req) of
         <<"process">> ->
@@ -87,20 +90,6 @@ forbidden(Req, State) ->
             cowboy_req:reply(404, [{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"type of repo request has to be process, domain or template\"}">>, Req),
             {stop, Req, State}
     end.
-
-
-
-%% ------------------------
-
-content_types_provided(Req, State) ->
-    {[
-        {<<"application/json">>, json_get}
-    ], Req, State}.
-
-content_types_accepted(Req, State) ->
-    {[
-        {{<<"application">>, <<"json">>, '*'}, json_post}
-    ], Req, State}.
 
 json_get(Req, State) when State#state.type =:= store ->
     case repo_server:get_template(State#state.repo_server_name, State#state.template_name) of

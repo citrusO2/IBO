@@ -14,7 +14,13 @@
                         clearMsgs();
                         $location.path('overview');
                     }, function(error){
-                        $scope.error = "Could not authorize login, check username and password";
+                        console.log(error);
+                        if(error.status == 401){
+                            $scope.error = "Could not authorize login, check username and password!";
+                        } else{
+                            $scope.error = "Could not authorize login, try again later!";
+                            $scope.error += " (" + error.status + ": " + error.statusText + (error.data.error != null ? ", " + error.data.error +")" : ")");
+                        }
                     }
                 );
                 clearMsgs();
@@ -68,17 +74,10 @@
             $scope.indices = null;
             $scope.error = null;
 
-            $http.get('/api/box', AuthService.currentHeader()).then(
+            $http.get('/api/box'/*, AuthService.currentHeader()*/).then(
                 function(res){
                     $scope.indices = res.data;
                     DataService.broadcastindices($scope.indices)
-//                    var nav = $('#activeTasks');
-//                    nav.empty();
-//                    $scope.indices.forEach( function(index){
-//                        angular.forEach(index.xbolist, function(task, i){
-//                            nav.append($compile("<li><a href=\"#/box/" + task.xboid + "\" data-active-link=\"active\">" + task.xbotemplate + "</a></li>") );
-//                        });
-//                    });
                 },function(res){
                     $scope.error = "Could not retrieve box-indices!";
                 }
@@ -91,7 +90,7 @@
             $scope.xboId = $routeParams.xboId;
             $scope.error = null;
 
-            $http.get('/api/box/' + $scope.xboId, AuthService.currentHeader()).then(
+            $http.get('/api/box/' + $scope.xboId /*, AuthService.currentHeader()*/).then(
                 function(res){
                     $scope.schema = res.data
 
@@ -113,7 +112,7 @@
                         // Then we check if the form is valid
                         if (form.$valid) {
                             console.log($scope.model);
-                            $http.post('/api/box/'+ $scope.xboId, $scope.model, AuthService.currentHeader()).then(
+                            $http.post('/api/box/'+ $scope.xboId, $scope.model/*, AuthService.currentHeader()*/).then(
                                 function(res){$scope.success = "Data sent successfully";},
                                 function(res){$scope.error = res.data.error;}
                             );
@@ -138,7 +137,7 @@
             $scope.error = null;
             $scope.processes = [];
 
-            $http.get('/api/repo/process', AuthService.currentHeader()).then(
+            $http.get('/api/repo/process'/*, AuthService.currentHeader()*/).then(
                 function(res){
                     $scope.processes = res.data;
                 },function(res){
@@ -155,7 +154,7 @@
             $scope.startprocess = function(processName){
                 var r = confirm("Start process \""+processName+"\"?");
                 if(r == true){
-                    $http.post('/api/repo/process/'+processName,processName,AuthService.currentHeader()).then(
+                    $http.post('/api/repo/process/'+processName,processName/*,AuthService.currentHeader()*/).then(
                         function(res){$scope.success = "Process started successfully";},
                         function(res){$scope.error = res.data.error;}
                     );
@@ -202,7 +201,7 @@
 //            });
 
             //retrieve xactor information from the server
-            $http.get('/api/repo/domain', AuthService.currentHeader()).then(
+            $http.get('/api/repo/domain' /*, AuthService.currentHeader()*/).then(
                 function(res){
                     $scope.xactors = res.data;
                     $scope.newStep.domain = $scope.xactors[0];   // preselecting first item in select
@@ -459,7 +458,7 @@
                 try{
                     var t = getExportTemplate();
 
-                    $http.post('/api/repo/template/'+ t.name, t, AuthService.currentHeader()).then(
+                    $http.post('/api/repo/template/'+ t.name, t /*, AuthService.currentHeader()*/).then(
                         function(res){$scope.success = "Template stored successfully";},
                         function(res){$scope.error = res.data.error;}
                     );

@@ -37,6 +37,7 @@
             var currentUser = null;
             var currentHeader = null;
             var currentGroups = null;
+            var wasCookieLoginTried = false;
 
             function createHeader(username, password){
                 currentHeader = {headers:  {
@@ -48,6 +49,19 @@
             //$location.path('login');
 
             return {
+                cookie_login: function(success, error){
+                    wasCookieLoginTried = true;
+                    $http.get('/api/directory/user').then(
+                        function(res){
+                            currentUser = res.data;
+                            success = success || $.noop;
+                            success(res);
+                        },function(res){
+                            error = error || $.noop;
+                            error(res);
+                        }
+                    );
+                },
                 login: function(username, password, success, error) {
                     createHeader(username, password);
 
@@ -65,13 +79,22 @@
                 logout: function() {
                     currentUser = currentHeader = null;
                     $location.path('login');
+                    $http.get('/api/directory/logout').then(    // deletes session-id from server to force authentication
+                        function(res){
+                            console.log(res);   //logout successful
+                        },function(res){
+                            console.log(res);   //logout incomplete
+                        }
+                    )
                 },
+                wasCookieLoginTried: function() { return wasCookieLoginTried},
+
                 isLoggedIn: function() { return currentUser !== null; },
                 currentUser: function() { return currentUser; },
                 currentHeader: function() { return currentHeader; },
                 currentGroups: function() { return currentGroups; },
                 getGroups: function(success, error){
-                    $http.get('/api/directory/group', this.currentHeader()).then(
+                    $http.get('/api/directory/group' /*, this.currentHeader()*/).then(
                         function(res){
                             currentGroups = res.data;
                             success = success || $.noop;
@@ -86,6 +109,23 @@
         }
     ]);
 
+    // redirect to login when 401 is received
+    iboApp.service('authInterceptor',['$q', '$location',
+        function($q, $location) {
+            var service = this;
+
+            service.responseError = function(response) {
+                if (response.status == 401){
+                    $location.path('/login');
+                }
+                return $q.reject(response);
+            };
+        }
+    ]);
+    iboApp.config(['$httpProvider', function($httpProvider) {
+        $httpProvider.interceptors.push('authInterceptor');
+    }])
+
     iboApp.factory('DataService', ['$rootScope',
         function($rootScope){
             return{
@@ -98,7 +138,9 @@
 
     iboApp.run(['$rootScope', '$location', 'AuthService', function ($rootScope, $location, AuthService) {
         $rootScope.$on('$routeChangeStart', function (event, next, data2) {
-            if (!AuthService.isLoggedIn()) {
+            if (!AuthService.wasCookieLoginTried()){
+                AuthService.cookie_login();
+            } else if (!AuthService.isLoggedIn()) {
                 if(next.$$route && next.$$route.originalPath != '/login'){
                     event.preventDefault();
                     $location.path('/login');
@@ -107,7 +149,8 @@
             else {
                 if(next.$$route && next.$$route.originalPath == '/login'){
                     event.preventDefault();
-                    $location.path('/overview');
+                    AuthService.logout();
+                    //$location.path('/overview');
                 }
             }
         });

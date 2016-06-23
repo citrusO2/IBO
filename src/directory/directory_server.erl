@@ -159,7 +159,7 @@ create_tables_if_nonexistent() ->
     db:create_local_table_if_nonexistent(ibo_user_cache,
         record_info(fields, ibo_user_cache),
         ram_copies, set),
-    ok = mnesia:wait_for_tables([ibo_user, ibo_group], 5000).
+    ok = mnesia:wait_for_tables([ibo_user, ibo_group, ibo_user_cache], 5000).
 
 % resolves all parents of the given groups recursively and returns a list with all groups+all parents
 resolve_groups_transactional(StartGroups) ->  % start function of recursion
