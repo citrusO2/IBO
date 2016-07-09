@@ -21,12 +21,16 @@
                 templateUrl: 'partials/proclist.html',
                 controller: 'NewProcCtrl',
                 activenav: 'detail'
-            }).when('/newtemplate', {
+            }).when('/template/:templateName', {
                 templateUrl: 'partials/proctemplate.html',
-                controller: 'NewProcTemplCtrl',
+                controller: 'ProcTemplCtrl',
+                activenav: 'detail'
+            }).when('/template', {
+                templateUrl: 'partials/proctemplate.html',
+                controller: 'ProcTemplCtrl',
                 activenav: 'detail'
             }).otherwise({
-                redirectTo: '/login'
+                redirectTo: '/overview'
             });
         }
     ]);
@@ -156,6 +160,34 @@
         });
     }]);
 
+    iboApp.directive( 'goClick', [ '$location', function ($location) {
+        return function ( scope, element, attrs ) {
+            var path;
+            attrs.$observe( 'goClick', function (val) {
+                path = val;
+            });
+            element.bind( 'click', function () {
+                scope.$apply( function () {
+                    $location.path( path );
+                });
+            });
+        };
+    }]);
+
+    iboApp.directive('confirmClick', [ function(){
+        return {
+            link: function (scope, element, attr) {
+                var msg = attr.confirmClick || "Are you sure?";
+                var clickAction = attr.confirmedClick;
+                element.bind('click',function (event) {
+                    if ( window.confirm(msg) ) {
+                        scope.$eval(clickAction)
+                    }
+                });
+            }
+        };
+    }]);
+
     iboApp.directive('activeLink', ['$location', function (location) {
         return {
             restrict: 'A',
@@ -183,11 +215,23 @@
                 description: Schema.description,
                 type: 'object',
                 properties: createSchemaV4properties(Schema.variables),
-                required: getRequiredVariableNames(Schema.variables)
+                required: getRequiredVariableNames(Schema.variables),
+                order: Schema.variables.map(function(variable){return variable.name}) // not official schema input, but needed because erlang does not retain order in maps
             }
             if(Schema.required.length == 0)
                 delete Schema.required;
+            if(Schema.order.length == 0)
+                delete Schema.order;
+
             return Schema;
+        }
+
+        var createInternalSchema = function(SchemaV4){
+            return {
+                title: SchemaV4.title,
+                description: SchemaV4.description,
+                variables: createInternalSchemaVariables(orderSchemaV4(SchemaV4))
+            };
         }
 
         function createSchemaV4properties(variables){
@@ -196,6 +240,60 @@
                 properties[variables[i].name] = createSchemaV4variableProperties(variables[i])
             }
             return properties;
+        }
+
+        function createInternalSchemaVariables(SchemaV4){
+            var variables = [];
+            angular.forEach(SchemaV4.properties, function(props, varname){
+                var newvar = {  // general properties of the variable
+                    name: varname,
+                    title: props.title,
+                    description: props.description,
+                    required: isVariableRequired(SchemaV4.required,varname),
+                    type: props.type
+                };  // order is ignored, because it has already been taken care of before
+
+                if(props.enum != null){ //input type select
+                    newvar.element = "select";
+                    newvar.options =  props.enum.map(function(variable){return {text: variable}});
+                } else {    //input type input
+                    newvar.element = "input"
+                    switch(props.type){
+                        case "integer": //no break
+                        case "number":
+                            newvar.hasMinimum = props.minimum != null;
+                            newvar.hasMaximum = props.maximum != null;
+                            if(newvar.hasMinimum)
+                                newvar.minimum = props.minimum;
+                            if(newvar.hasMaximum)
+                                newvar.maximum = props.maximum;
+                            break;
+                        case "string":
+                            newvar.hasMinLength = props.minLength != null;
+                            newvar.hasMaxLength = props.maxLength != null;
+                            if(newvar.hasMinLength)
+                                newvar.minLength = props.minLength;
+                            if(newvar.hasMaxLength)
+                                newvar.maxLength = props.maxLength;
+                            break;
+                        default:
+                            throw "element type input is not of type integer, number or string!"
+                    }
+                }
+                variables.push(newvar);
+            });
+            return variables;
+        }
+
+        function isVariableRequired(RequiredVariables, VariableName){
+            if(RequiredVariables == null)
+                return false;
+
+            for(var i = 0; i < RequiredVariables.length; i++){
+                if(RequiredVariables[i] == VariableName)
+                    return true;
+            }
+            return false;
         }
 
         function createSchemaV4variableProperties(variable){
@@ -248,10 +346,23 @@
             return required;
         }
 
+        var orderSchemaV4 = function(Schema){
+            if(Schema.order == null)
+                return Schema;
+
+            var orderedProperties = {};
+            for(var i = 0; i < Schema.order.length; i++){
+                orderedProperties[Schema.order[i]] = Schema.properties[Schema.order[i]];    // reordering works, but keep in mind that variable inspecting usually displays properties in alphabetic order
+            }
+            Schema.properties = orderedProperties;
+            return Schema;
+        }
 
         return{
-            createSchema: createSchemaV4
-        }
+            createSchema: createSchemaV4,
+            orderSchema: orderSchemaV4,
+            createInternalSchema: createInternalSchema
+        };
     }]);
 
 })();

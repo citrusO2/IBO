@@ -339,3 +339,47 @@
         },
         <<"required">> => [<<"yesno">>]
     }).
+
+-define(TESTSCHEMA14, % contains an order
+    #{
+        <<"title">> => <<"Marketing Budget - Decision">>,
+        <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+        <<"type">> => <<"object">>,
+        <<"properties">> => #{
+            <<"reason">> => #{
+                <<"title">> => <<"Reason">>,
+                <<"description">> => <<"The reason for your decision">>,
+                <<"type">> => <<"string">>
+            },
+            <<"yesno">> => #{
+                <<"title">> => <<"Decide">>,
+                <<"description">> => <<"tick your decision">>,
+                <<"type">> => <<"string">>,
+                <<"enum">> => [<<"no">>, <<"yes">>, <<"maybe">>]
+            }
+        },
+        <<"required">> => [<<"yesno">>],
+        <<"order">> => [<<"yesno">>, <<"reason">>]
+    }).
+
+-define(TESTSCHEMA15, % contains a wrong order (incomplete)
+    #{
+        <<"title">> => <<"Marketing Budget - Decision">>,
+        <<"description">> => <<"Approve the current marketing budget of 250.000 EUR">>,
+        <<"type">> => <<"object">>,
+        <<"properties">> => #{
+            <<"reason">> => #{
+                <<"title">> => <<"Reason">>,
+                <<"description">> => <<"The reason for your decision">>,
+                <<"type">> => <<"string">>
+            },
+            <<"yesno">> => #{
+                <<"title">> => <<"Decide">>,
+                <<"description">> => <<"tick your decision">>,
+                <<"type">> => <<"string">>,
+                <<"enum">> => [<<"no">>, <<"yes">>, <<"maybe">>]
+            }
+        },
+        <<"required">> => [<<"yesno">>],
+        <<"order">> => [<<"reason">>]
+    }).

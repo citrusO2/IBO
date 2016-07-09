@@ -48,6 +48,8 @@ validate_schema_test(_Config) ->
     TS11 = ?TESTSCHEMA11,
     TS12 = ?TESTSCHEMA12,
     TS13 = ?TESTSCHEMA13,
+    TS14 = ?TESTSCHEMA14,
+    TS15 = ?TESTSCHEMA15,
 
     {ok, TS1} = schema_validator:validate_schema(TS1),
     {error, {"description must be of type binary", 2312}} = schema_validator:validate_schema(TS2),
@@ -61,7 +63,11 @@ validate_schema_test(_Config) ->
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS10}} = schema_validator:validate_schema(TS10),
     {error, {"the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", TS11}} = schema_validator:validate_schema(TS11),
     {ok, TS12} = schema_validator:validate_schema(TS12),
-    {ok, TS13} = schema_validator:validate_schema(TS13).
+    {ok, TS13} = schema_validator:validate_schema(TS13),
+    {ok, TS14} = schema_validator:validate_schema(TS14),
+    {error, {"all properties must be present in the order list", [<<"reason">>]}} = schema_validator:validate_schema(TS15),
+    ok.
+
 
 validate_schema_data_test(_Config) ->
     Data1 = #{<<"reason">> => <<"DecisionReason">>, <<"yesno">> => <<"yes">>},

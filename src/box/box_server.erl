@@ -231,7 +231,7 @@ remove_xbo_transactionless(XlibState) ->
             case mnesia:wread({ibo_boxindex, BoxData#ibo_boxdata.groupname}) of
                 [R] ->
                     mnesia:write(R#ibo_boxindex{
-                        xbolist = lists:dropwhile(fun(Element) -> Element#ibo_boxindex_elementpreview.xboid =:= BoxData#ibo_boxdata.xboid end, R#ibo_boxindex.xbolist)
+                        xbolist = lists:filter(fun(Element) -> Element#ibo_boxindex_elementpreview.xboid =/= BoxData#ibo_boxdata.xboid end, R#ibo_boxindex.xbolist)
                     });
                 [] ->
                     mnesia:abort("particular mnesia boxindex has to exist but doesn't")

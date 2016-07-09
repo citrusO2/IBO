@@ -9,10 +9,41 @@
 <p data-ng-hide="processes.length">
     No process available that you can start
 </p>
-
-<p data-ng-show="processes.length">
-    List of process templates:
-    <div class="list-group">
-        <button type="button" class="list-group-item" data-ng-repeat="process in processes" data-ng-click="startprocess(process)">{{process}}</button>
-    </div>
+<p>
+    Todo: hide/remove Edit/Delete/Start buttons depending on the access rights of the user
+    (listed processes are processes that the logged in user is at least allowed to start)
 </p>
+
+<ul class="list-group process .col-sm-12 col-md-8 col-lg-6" data-ng-show="processes.length">
+    <li data-ng-repeat="process in processes" class="list-group-item">
+        <div class="row">
+            <div class="col-md-6">
+                <h4 class="list-group-item-heading">{{process.name}}</h4>
+                <p class="list-group-item-text">{{process.description}}</p>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group pull-right" role="group">
+                    <button data-confirm-click="Edit process template {{process.name}}?" type="button" class="btn btn-default btn-sm" aria-label="Left Align" data-confirmed-click="editprocess(process.name)">
+                        Edit <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
+                    </button>
+                    <button data-confirm-click="Delete process template {{process.name}}?" data-confirmed-click="deletetemplate(process.name, $index)" type="button" class="btn btn-default btn-sm" aria-label="Left Align">
+                        Delete<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </button>
+                    <button data-confirm-click="Start process {{process.name}}?" data-confirmed-click="startprocess(process.name)" type="button" class="btn btn-primary btn-sm" aria-label="Left Align">
+                    Start <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </li>
+</ul>
+        <!--<div class="input-group" data-ng-repeat="process in processes" style="width: 500px; margin-bottom: 5px;">-->
+            <!--<div class="input-group-btn">-->
+                <!--<button type="button" class="btn btn-default" data-ng-click="startprocess(process)">Start <span class="glyphicon glyphicon-play"></span></button>-->
+            <!--</div>-->
+            <!--<div class="form-control">{{process.name}}</div>-->
+            <!--<div class="input-group-btn">-->
+                <!--<button type="button" class="btn btn-default" aria-label="Help"><span class="glyphicon glyphicon-pencil"></span></button>-->
+                <!--<button type="button" class="btn btn-default" aria-label="Help"><span class="glyphicon glyphicon-trash"></span></button>-->
+            <!--</div>-->
+        <!--</div>-->

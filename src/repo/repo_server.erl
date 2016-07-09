@@ -29,7 +29,7 @@
     terminate/2, code_change/3]).
 
 %% API ---------------------------------------------------------------
--export([start_link/1, stop/1, start_template/4, start_template/5, store_template/3, get_templatelist/2, get_template/2, has_store_permission/2]).
+-export([start_link/1, stop/1, start_template/4, start_template/5, store_template/3, get_templatelist/2, get_template/2, has_store_permission/2, delete_template/3]).
 
 %% starts a new global repo server with its name
 -spec start_link(Args :: #{name => binary(), router => nonempty_list(binary()), error => nonempty_list(binary()), n => non_neg_integer(), managegroups => [binary()]}) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -47,6 +47,14 @@ stop(Repo) ->
 store_template(Repo, Template, Groups) when is_record(Template, ibo_repo_template), is_list(Groups) ->
     gen_server:call({global,Repo}, {store_template, Template, Groups}).
 
+%% delete a template in the repositor (= actually moving it to the second table)
+-spec delete_template(Repo :: binary(), TemplateName :: binary(),  Groups :: [binary()]) -> ok | not_found | {error, term()};
+                     (Repo :: binary(), TemplateName :: binary(),  User :: #ibo_user{}) -> ok | not_found | {error, term()}.
+delete_template(Repo, TemplateName, Groups) when is_list(Groups) ->
+    gen_server:call({global, Repo}, {delete_template, TemplateName, Groups});
+delete_template(Repo, TemplateName, User) when is_record(User, ibo_user) ->
+    delete_template(Repo, TemplateName, User#ibo_user.access_to).
+
 %% starts the template determined by the template name, filled with the Args and checked if one of the given groups is allowed to execute it
 -spec start_template(Repo :: binary(), Groups :: [binary()], Creator :: binary(), TemplateName :: binary(), Args :: [] | any()) -> ok | {error, not_found} | {error, term()}.
 start_template(Repo, Groups, Creator, TemplateName, Args) when is_list(Groups)->
@@ -58,7 +66,7 @@ start_template(Repo, Groups, Creator, TemplateName) ->
     start_template(Repo, Groups, Creator, TemplateName, []).
 
 %% gets a list of templates for the given groups
--spec get_templatelist(Repo :: binary(), Groups :: [binary()]) -> [] | [binary()] | {error, term()}.
+-spec get_templatelist(Repo :: binary(), Groups :: [binary()]) -> [] | [{binary(), binary()}] | {error, term()}.
 get_templatelist(Repo, Groups) when is_list(Groups)->
     gen_server:call({global,Repo}, {get_templatelist, Groups}).
 
@@ -105,6 +113,14 @@ handle_call({store_template, Template, Groups}, _From, State) ->
         false ->
             {error, "No group of the given groups (" ++ helper:binary_list_to_string(Groups, <<", ">>) ++ ") is allowed to store templates"}
     end,
+    {reply, Reply, State};
+handle_call({delete_template, TemplateName, Groups}, _From, State) ->
+    Reply = case helper:has_group_permission(Groups, State#state.managegroups) of
+                true ->
+                    remove_and_backup_template(TemplateName);
+                false ->
+                    {error, "No group of the given groups (" ++ helper:binary_list_to_string(Groups, <<", ">>) ++ ") is allowed to delete templates"}
+            end,
     {reply, Reply, State};
 handle_call({get_templatelist, Groups}, _From, State) ->
     {reply, get_templatelist_for_groups(Groups), State};
@@ -159,9 +175,9 @@ store_and_backup_template(Template) ->
         fun() ->
             case mnesia:wread({ibo_repo_template, Template#ibo_repo_template.name}) of
                 [R] ->  % there is already a template with the same name
-                    mnesia:write(setelement(1,R,ibo_repo_template_old)),   % write old repo template to the other table
-                    mnesia:write(Template#ibo_repo_template{version = R#ibo_repo_template.version + 1});
-                [] ->
+                    mnesia:write(setelement(1,R,ibo_repo_template_old)),                                    % write old repo template to the other table
+                    mnesia:write(Template#ibo_repo_template{version = R#ibo_repo_template.version + 1});    % as the normal table is a set, the old one gets overwritten here
+                [] ->   % there is no template with the same name
                     mnesia:write(Template#ibo_repo_template{version = 1})
             end
         end),
@@ -170,10 +186,26 @@ store_and_backup_template(Template) ->
         {aborted, Reason} -> {error, Reason}
     end.
 
+remove_and_backup_template(TemplateName) ->
+    Res = mnesia:transaction(
+        fun() ->
+            case mnesia:wread({ibo_repo_template, TemplateName}) of
+                [R] ->
+                    mnesia:write(setelement(1,R,ibo_repo_template_old)),
+                    mnesia:delete({ibo_repo_template, TemplateName});
+                [] -> not_found
+            end
+        end),
+    case Res of
+        {atomic, ok} -> ok;
+        {atomic, not_found} -> not_found;
+        {aborted, Reason} -> {error, Reason}
+    end.
+
 get_templatelist_for_groups(Groups) ->
     Res = mnesia:transaction(
         fun() ->
-            Q = qlc:q([ R#ibo_repo_template.name || R <- mnesia:table(ibo_repo_template),
+            Q = qlc:q([ {R#ibo_repo_template.name, R#ibo_repo_template.description} || R <- mnesia:table(ibo_repo_template),
                 G <- Groups, lists:member(G, R#ibo_repo_template.groups)], {unique, true}),
             qlc:e(Q)
         end),

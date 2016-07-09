@@ -20,7 +20,7 @@
                     <div class="form-group">
                         <label for="newStepLocal">Local of the step</label>
                         <input data-ng-hide="newStep.domain.info.local == 'group'" data-ng-model="newStep.local" type="text" class="form-control" id="newStepLocal" placeholder="Local">
-                        <select data-ng-show="newStep.domain.info.local == 'group'" data-ng-model="newStep.local" class="form-control" id="newStepLocalSelect" data-ng-options="group.description for group in groups" >
+                        <select data-ng-show="newStep.domain.info.local == 'group'" data-ng-model="newStep.local" class="form-control" id="newStepLocalSelect" data-ng-options="group.name as group.description for group in groups" >
                         </select>
                     </div>
                 </div>

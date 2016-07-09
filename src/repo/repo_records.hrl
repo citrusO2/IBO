@@ -42,6 +42,7 @@
     startdestination :: binary(),
     created_by :: binary(),
     gui :: #ibo_repo_gui{},
+    created_at = os:timestamp() :: timestamp(),
     transform = fun (XBO,_Args) -> XBO end :: fun( (#ibo_xbo{}, Args :: [] | any()) -> #ibo_xbo{})  % default = no transformation
 }).
 

@@ -73,6 +73,11 @@ validate_keyvalue(?EXCLUSIVEMINIMUM, Bool, CMap)->
 validate_keyvalue(?EXCLUSIVEMAXIMUM, Bool, CMap)->
     ?MUSTBEBOOLEAN(Bool, "boolean"),
     ?CT("exlusivemaximum requires maximum to be present", CMap, maps:is_key(?MAXIMUM));
+validate_keyvalue(<<"order">>, List, CMap) ->   % not in json schema draft, similar to required, is needed because erlang-maps do not retain the order of the elements. If order is used, all properties must be present (unlike required, which only checks if the required items are present in the properties)
+    ?MUSTBELIST(List, "order") andalso ?ATLEASTONE(List, "order") andalso
+        ?ALLOFTYPEBINARY(List, "order") andalso ?UNIQUE(List, "order") andalso
+        ?CT("all properties must be present in the order list", List, lists:all(fun(E) ->
+            lists:member(E, List) end, maps:keys(maps:get(?PROPERTIES, CMap))));
 validate_keyvalue(Key, Map, _CMap) when is_map(Map) ->
     validate_map(Map, Key).
 

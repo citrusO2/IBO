@@ -9,3 +9,7 @@
 <p>{{schema.description}}</p>
 
 <form data-sf-schema="schema" data-sf-form="form" data-sf-model="model" name="boxdetailform" data-ng-submit="onSubmit(boxdetailform)"></form>
+
+<p data-ng-show="emptySchema">
+    <button data-ng-click="onEmptySubmit()" class="btn btn-primary">Ok</button>
+</p>

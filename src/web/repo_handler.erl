@@ -30,6 +30,7 @@
 -export([content_types_accepted/2]).
 -export([is_authorized/2]).
 -export([forbidden/2]).
+-export([delete_resource/2]).
 -export([json_get/2]).
 -export([json_post/2]).
 
@@ -41,7 +42,7 @@ init(Req, Opts) ->
 
 %% Allowed Methods ---------------------------------------------------
 allowed_methods(Req, State) ->
-    {[<<"GET">>, <<"HEAD">>, <<"OPTIONS">>, <<"POST">>], Req, State}.
+    {[<<"GET">>, <<"HEAD">>, <<"OPTIONS">>, <<"POST">>, <<"DELETE">>], Req, State}.
 
 %%%===================================================================
 %%% General functions
@@ -91,20 +92,32 @@ forbidden(Req, State) ->
             {stop, Req, State}
     end.
 
+delete_resource(Req, State) when State#state.type =:= store ->
+    case repo_server:delete_template(State#state.repo_server_name, State#state.template_name, State#state.ibo_user) of
+        ok ->
+            {true, Req, State};
+        not_found ->
+            cowboy_req:reply(404,[{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be found\"}">>, Req),
+            {stop, Req, State};
+        {error, _Message} ->
+            cowboy_req:reply(500,[{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"error deleting template\"}">>, Req),
+            {stop, Req, State}
+    end.
+
 json_get(Req, State) when State#state.type =:= store ->
     case repo_server:get_template(State#state.repo_server_name, State#state.template_name) of
         not_found ->
             cowboy_req:reply(404,[{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"template could not be found\"}">>, Req),
-            {true, Req, State};
+            {stop, Req, State};
         {error, _Message} ->
             cowboy_req:reply(500,[{<<"content-type">>, <<"application/json">>}], <<"{\"error\": \"error retrieving template\"}">>, Req),
-            {true, Req, State};
+            {stop, Req, State};
         Template ->
             Body = jsx:encode( json_helper:prepare(Template)),
             {Body, Req, State}
     end;
 json_get(Req, State) when State#state.type =:= list ->
-    Body = jsx:encode(State#state.templates),
+    Body = jsx:encode( lists:map(fun(Template) -> #{name => element(1, Template), description => element(2, Template)} end,State#state.templates)),
     {Body, Req, State};
 json_get(Req, State) when State#state.type =:= domain ->
     Body = jsx:encode(json_helper:prepareXactors(watchdog_server:get_global_xactors())),

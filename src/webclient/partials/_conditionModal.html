@@ -18,6 +18,7 @@
                             description:  {{vars[condition.step][condition.variable].description}}<br>
                             type: {{vars[condition.step][condition.variable].type}}<br>
                             required: {{vars[condition.step][condition.variable].required}}
+                            <span data-ng-show="vars[condition.step][condition.variable].options != null"><br>options: {{vars[condition.step][condition.variable].options}}</span>
                         </p>
                         <div class="form-inline">
                             <div class="form-group">
@@ -26,7 +27,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="sr-only" for="conditionVariable">Variable</label>
-                                <select data-ng-change="condition.operator = null; condition.value = null" required data-ng-disabled="condition.step == null" class="form-control" id="conditionVariable" data-ng-model="condition.variable" data-ng-options="var.vid as var.name for (varvid, var) in vars[condition.step]"></select>
+                                <select data-ng-change="condition.operator = null; condition.value = null" required data-ng-disabled="condition.step == null" class="form-control" id="conditionVariable" data-ng-model="condition.variable" data-ng-options="var.name as var.name for (varname, var) in vars[condition.step]"></select>
                             </div>
                             <div class="form-group">
                                 <label class="sr-only" for="conditionOperator">Operator</label>

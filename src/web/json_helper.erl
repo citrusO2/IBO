@@ -23,6 +23,7 @@ prepare(Template) when is_record(Template, ibo_repo_template) ->
     PreparedTemplate = Template#ibo_repo_template{
         steps = prepare(Template#ibo_repo_template.steps),
         gui = prepare(Template#ibo_repo_template.gui),
+        created_at = calendar:now_to_local_time(Template#ibo_repo_template.created_at),
         transform = undefined   % transform should not be transmitted to web-client, should one be available
     },
     ?record_to_map(ibo_repo_template, PreparedTemplate);
@@ -98,6 +99,8 @@ checkTemplateRecord(R) when is_record(R, ibo_repo_template) ->
     throw_if_false(is_integer(R#ibo_repo_template.ttl) andalso 0 <  R#ibo_repo_template.ttl, "template ttl must be integer and bigger than 0"),
     throw_if_false(is_integer(R#ibo_repo_template.startstepnr) andalso 0 <  R#ibo_repo_template.startstepnr, "template startstepnr must be integer and bigger than 0"),
 
+    throw_if_false(is_tuple(R#ibo_repo_template.created_at) andalso 3 =:= size(R#ibo_repo_template.created_at), "template createdate must be a timestamp-tuple" ),
+
     throw_if_false(is_list(R#ibo_repo_template.groups) andalso length(R#ibo_repo_template.groups) > 0,"template groups must be a list and the size must be at least 1"),
     throw_if_false(lists:all(fun(Group)-> is_binary(Group) end, R#ibo_repo_template.groups), "every group in template groups must be binary"),
 
@@ -145,7 +148,8 @@ prepareTemplate(Map, Creator) when is_map(Map) ->
     RepoTemplate#ibo_repo_template{
         steps = prepareTemplateSteps(RepoTemplate#ibo_repo_template.steps),
         gui = prepareTemplateGUI(RepoTemplate#ibo_repo_template.gui),
-        created_by = Creator
+        created_by = Creator,
+        created_at = os:timestamp() % created_at is not automatically filled, as the predefined value from the record is not executed in helper:map_to_record_lenient_atombin
     }.
 
 prepareTemplateSteps(ListOfSteps) ->

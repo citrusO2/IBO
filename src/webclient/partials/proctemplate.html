@@ -4,7 +4,9 @@
 <div class="alert alert-success" data-ng-show="success">
     <strong>Success!</strong> {{success}}
 </div>
-<h1 class="page-header">Create a new process template</h1>
+<h1 class="page-header" data-ng-hide="isSaved">Create a new process template</h1>
+<h1 class="page-header" data-ng-show="isSaved">Edit process template {{templateSettings.name}}</h1>
+
 
 <p data-ng-hide="xactors.length">
     No actors available!

@@ -99,6 +99,7 @@
         startdestination = ?BOX_NAME,
         startstepnr = 1,
         steps = ?TEMPLATE_TESTSTEPS1,
+        description = <<"marketingbudgetdecisiondescription">>,
         groups = [<<"marketing">>],
         name = <<"marketingbudgetdecision">>,
         version = 1,
@@ -114,6 +115,7 @@
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"marketing">>, <<"maybes">>],
         name = <<"malala">>,
+        description = <<"malaladescription">>,
         version = 1,
         ttl = 60*60*24*7,   % = 1 week
         transform = fun (XBO,_Args) -> XBO end  % = no change
@@ -127,6 +129,7 @@
         steps = ?TEMPLATE_TESTSTEPS1,
         groups = [<<"it">>],
         name = <<"wuhaha">>,
+        description = <<"wuhahadescription">>,
         version = 1,
         ttl = 60*60*24*7,   % = 1 week
         transform = fun (XBO,_Args) -> XBO end  % = no change

@@ -18,8 +18,8 @@
 -export([all/0, init_per_testcase/2, end_per_testcase/2, init_per_suite/1, end_per_suite/1, version_counter_test/1]).
 
 %% API
--export([store_template_test/1, start_template_test/1, retrieve_template_test/1]).
-all() -> [store_template_test, start_template_test, retrieve_template_test, version_counter_test].
+-export([store_template_test/1, start_template_test/1, retrieve_template_test/1, delete_template_test/1]).
+all() -> [store_template_test, start_template_test, retrieve_template_test, version_counter_test, delete_template_test].
 
 init_per_suite(Config) ->
     ct_helper:init_mnesia(),
@@ -81,11 +81,11 @@ retrieve_template_test(_Config) ->
     3 = ct_helper:get_recordcount_in_table(ibo_repo_template),
 
     User = ?MARKETINGUSER,
-    Response = repo_server:get_templatelist(?REPO_NAME, User#ibo_user.groups),  % should use directory_server's resolve group!
+    Response = repo_server:get_templatelist(?REPO_NAME, User#ibo_user.groups),  % should use directory_server's resolve group! -> groups is only used here to avoid using a box_server in this test
     2 = length(Response),
-    true = lists:member(<<"marketingbudgetdecision">>, Response),
-    true = lists:member(<<"malala">>, Response),
-    false = lists:member(<<"wuhaha">>, Response),
+    true = lists:member({<<"marketingbudgetdecision">>,<<"marketingbudgetdecisiondescription">>}, Response),
+    true = lists:member({<<"malala">>, <<"malaladescription">>}, Response),
+    false = lists:member({<<"wuhaha">>, <<"wuhahadescription">>}, Response),
     ok.
 
 version_counter_test(_Config) ->    % overwriting an existing template should give the new template a higher version number
@@ -110,5 +110,29 @@ version_counter_test(_Config) ->    % overwriting an existing template should gi
     2 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
     StoredTemplate3 = db:read_transactional(ibo_repo_template, Template#ibo_repo_template.name),
     3 = StoredTemplate3#ibo_repo_template.version,
+    ok.
 
+delete_template_test(_Config)->
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+    Template1 = ?TEMPLATE_TESTTEMPLATE1,
+    Template2 = ?TEMPLATE_TESTTEMPLATE2,
+    Template3 = ?TEMPLATE_TESTTEMPLATE3,
+    ok = repo_server:store_template(?REPO_NAME, Template1, ?REPO_MANAGEGROUPS),
+    ok = repo_server:store_template(?REPO_NAME, Template2, ?REPO_MANAGEGROUPS),
+    ok = repo_server:store_template(?REPO_NAME, Template3, ?REPO_MANAGEGROUPS),
+    3 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    0 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+
+    ok = repo_server:delete_template(?REPO_NAME, Template1#ibo_repo_template.name, ?REPO_MANAGEGROUPS),
+    2 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+
+    not_found = repo_server:delete_template(?REPO_NAME, <<"asdkjfalsdjfaödsf">>, ?REPO_MANAGEGROUPS),
+    2 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
+
+    {error, _} = repo_server:delete_template(?REPO_NAME, Template2#ibo_repo_template.name, [<<"asdfadsfasdf">>]),
+    2 = ct_helper:get_recordcount_in_table(ibo_repo_template),
+    1 = ct_helper:get_recordcount_in_table(ibo_repo_template_old),
     ok.

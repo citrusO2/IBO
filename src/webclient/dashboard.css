@@ -322,3 +322,44 @@ ul[dnd-list] dnd-nodrag > .form-inline{
     right: 16px;
     z-index: 1000;
 }
+
+ /*
+ * List of Processes
+ */
+/*.process-template-item-content{
+    width: 400px;
+}
+.process-template-item-control{
+    width: 400px;
+}*/
+
+
+ /*
+ * play button
+ */
+/*
+.play-button {
+  display: table;
+  height: auto;
+  position:relative;
+  cursor:pointer;
+}
+
+.play-button:after {
+  content: "\e072";
+  font-family: 'Glyphicons Halflings';
+  text-align:center;
+  font-size: 25pt;
+  line-height:0;
+  color: #ddd;
+  opacity:1;
+  margin: 10px 5px;
+  position: absolute;
+  -webkit-transform: translate(-50%,-50%);
+      -ms-transform: translate(-50%,-50%);
+          transform: translate(-50%,-50%);
+}
+.play-button:hover:after {
+  opacity:1;
+  color:#428bca;
+}*/
