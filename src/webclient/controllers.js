@@ -85,8 +85,8 @@
         }
     ]);
 
-    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService','SchemaV4Service',
-        function($scope, $routeParams, $http, AuthService, SchemaV4Service) {
+    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService','SchemaV4Service', '$sce',
+        function($scope, $routeParams, $http, AuthService, SchemaV4Service, $sce) {
             $scope.xboId = $routeParams.xboId;
             $scope.error = null;
             $scope.emptySchema = false;
@@ -94,6 +94,9 @@
             $http.get('/api/box/' + $scope.xboId /*, AuthService.currentHeader()*/).then(
                 function(res){
                     $scope.schema = SchemaV4Service.orderSchema(res.data);
+                    //update schema description to display variable templates better
+                    $scope.schema.description = $sce.trustAsHtml(highlightVariables($scope.schema.description));
+
                     console.log("schema boxdetailctrl", $scope.schema);
 
                     $scope.form = [
@@ -138,6 +141,21 @@
                         $scope.error += "You do not have access the requested resource (403)";
                 }
             );
+
+            function highlightVariables(DescriptionString){
+                var str = DescriptionString;
+                var matches = [];
+                str.replace(/\[(.*?)\]/g, function(g0,g1){matches.push(g0);}); //g0 = including brackets, g1 = without brackets
+                //var matches = DescriptionString.match(/\[(.*?)\]/g);
+                for(var i = 0; i < matches.length; i++){
+                    var split = matches[i].split('|');
+                    var variable = (split[split.length-1]).slice(0, -1); //remove trailing brackets
+
+                    var displayedVariable = '<code>' + variable + '</code>';
+                    str =  str.split(matches[i]).join(displayedVariable); //instead of replace, replaces all occurrences //str.replace(matches[i], NewID + '|' + matches[1]);
+                }
+                return str.replace(/(?:\r\n|\r|\n)/g, '<br>');  //replace linebreaks with html breaks
+            }
         }
     ]);
 
@@ -198,6 +216,7 @@
             $scope.editStep = {};
             $scope.schema = createEmptySchema();
             $scope.condition = {};
+            $scope.varselect = {};
             $scope.vars = {};
             $scope.templateSettings = {};
             var iid = 0;    //internal running id to link steps -> only used for GUI
@@ -500,10 +519,23 @@
             };
             $scope.editCurrentCondition = function(Args, argIndex){
                 updateStepVariables();
+                //console.log($scope.vars);
                 $scope.condition = angular.merge({}, Args[argIndex]);       //initialise condition (=deep copy);
                 $scope.condition.ref = { args: Args, index: argIndex };   //store reference to argument for saving later
                 $('#conditionModal').modal('show');
             };
+            $scope.insertNewVariableTemplate = function(Reference, ReferenceName){
+                updateStepVariables();
+                console.log($scope.vars);
+                $scope.varselect = {};
+                $scope.varselect.ref = Reference;
+                $scope.varselect.refName = ReferenceName;
+                $('#varselectModal').modal('show');
+            }
+            $scope.insertSelectedVariableTemplate = function(varselect){
+                varselect.ref[varselect.refName] += ' [' + varselect.step + "|" + varselect.variable + "]";
+                $('#varselectModal').modal('hide');
+            }
 
             $scope.previewCurrentSchema = function(Schema){
                 var V4schema = SchemaV4Service.createSchema(Schema);
@@ -996,6 +1028,9 @@
                             //a.push([getStepNrByIID(c.step), $scope.vars[Step.iid][c.variable].name, c.operator, c.value]);  //redirect vid to variable name
                             break;
                         case "schema":
+                            console.log(Args[i]);
+                            //update the internal IDs of the variabletemplates before creating the schema
+                            Args[i].description = updateTemplateVariableIDs(Args[i].description);
                             a.push(SchemaV4Service.createSchema(Args[i]));
                             break;
                         default:
@@ -1053,6 +1088,25 @@
                 }
                 $scope.error = "Could not get the group " + Name +", please try again later when the group is available again";
                 throw "Given group not found!";
+            }
+
+            function updateTemplateVariableIDs(DescriptionString){
+                var str = DescriptionString;
+                var matches = [];
+                str.replace(/\[(.*?)\]/g, function(g0,g1){matches.push(g0);});
+                //var matches = DescriptionString.match(/\[(.*?)\]/g);
+                for(var i = 0; i < matches.length; i++){
+                    var SplitVars = matches[i].split('|');
+                    if(SplitVars.length == 2){
+                        var OldID = SplitVars[0].substr(1); // remove first character, which is the '[' .slice(0, -1);
+                        var NewID = getStepNrByIID(OldID);
+                        if(NewID == 0)  // step cannot be found, so just skip the element
+                            continue;
+                        var NewTemplate = '[' + NewID + '|' + matches[i].split('|')[1];
+                        str =  str.split(matches[i]).join(NewTemplate); //instead of replace, replaces all occurrences //str.replace(matches[i], NewID + '|' + matches[1]);
+                    }
+                }
+                return str;
             }
 
         }

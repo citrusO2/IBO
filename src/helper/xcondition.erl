@@ -23,7 +23,7 @@ eval(Condition, CurrentStepdata, AllOtherStepdata) ->
 eval(Condition, #xlib_state{xbo = XBO, current_stepdata = CurrentStepData} = XlibState) when is_record(XlibState, xlib_state) ->
     eval(Condition, CurrentStepData, XBO#ibo_xbo.stepdata);
 eval([StepNr, VarName, Operator, Value], StepdataList) when is_list(StepdataList) ->
-    case get_latest_variable(StepdataList, StepNr, VarName) of
+    case xlib_helper:get_latest_variable(StepdataList, StepNr, VarName) of
         error ->
             error;
         {ok, VariableValue} ->
@@ -64,17 +64,4 @@ eval_var(VariableValue, <<"contains">>, GivenValue) ->
         {_Start, _Length} -> true
     end;
 eval_var(_,_,_) ->
-    error.
-
-get_latest_variable([Stepdata|OtherStepdata], StepNr, VarName) ->
-    case Stepdata#ibo_xbostepdata.stepnr =:= StepNr of
-        false ->
-            get_latest_variable(OtherStepdata, StepNr, VarName);   % not the stepdata we are looking for
-        true ->
-            case maps:find(VarName, Stepdata#ibo_xbostepdata.vars) of
-                {ok, Value} -> {ok, Value};
-                error -> get_latest_variable(OtherStepdata, StepNr, VarName)  % in case the variable was not defined in the latest version of the step, but in an earlier version of the step -> usually the variable should already be found before this line
-            end
-    end;
-get_latest_variable([], _,_) ->  % variable could not be found
     error.

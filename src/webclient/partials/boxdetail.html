@@ -6,10 +6,24 @@
 </div>
 <h1 class="page-header">{{schema.title}}</h1>
 
-<p>{{schema.description}}</p>
+<!--<div class="bs-callout bs-callout-primary">-->
+    <!--<h4>Description</h4>-->
+    <!--<p data-ng-bind-html="schema.description"></p>-->
+<!--</div>-->
 
-<form data-sf-schema="schema" data-sf-form="form" data-sf-model="model" name="boxdetailform" data-ng-submit="onSubmit(boxdetailform)"></form>
+<div class="panel panel-default">
+    <div class="panel-body" data-ng-bind-html="schema.description">
+    </div>
+    <div class="panel-footer">
+        <form data-sf-schema="schema" data-sf-form="form" data-sf-model="model" name="boxdetailform" data-ng-submit="onSubmit(boxdetailform)"></form>
+        <p data-ng-show="emptySchema">
+            <button data-ng-click="onEmptySubmit()" class="btn btn-primary">Ok</button>
+        </p>
+    </div>
+</div>
 
-<p data-ng-show="emptySchema">
-    <button data-ng-click="onEmptySubmit()" class="btn btn-primary">Ok</button>
-</p>
+<!--<form data-sf-schema="schema" data-sf-form="form" data-sf-model="model" name="boxdetailform" data-ng-submit="onSubmit(boxdetailform)"></form>-->
+
+<!--<p data-ng-show="emptySchema">-->
+    <!--<button data-ng-click="onEmptySubmit()" class="btn btn-primary">Ok</button>-->
+<!--</p>-->

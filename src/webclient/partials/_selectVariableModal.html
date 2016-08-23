@@ -1,0 +1,43 @@
+<div class="modal fade" id="varselectModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-content">
+                <form name="varselectForm">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="varselectLabel">Select Variable</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="bs-callout bs-callout-info">
+                            <h4>Info</h4>
+                            You need to save the step before you can access newly defined variables here.
+                            The variabletemplate, that is used to determine, which variable needs to be includeded, has the form [StepNrInternalID|VariableName]. Do not modify the variabletemplate and if the variable name is changed later, the variabletemplate has to be inserted again.
+                        </div>
+                        <p data-ng-show="vars[varselect.step][varselect.variable] != null">
+                            name: {{vars[varselect.step][varselect.variable].name}}<br>
+                            title: {{vars[varselect.step][varselect.variable].title}}<br>
+                            description:  {{vars[varselect.step][varselect.variable].description}}<br>
+                            type: {{vars[varselect.step][varselect.variable].type}}<br>
+                            required: {{vars[varselect.step][varselect.variable].required}}
+                            <span data-ng-show="vars[varselect.step][varselect.variable].options != null"><br>options: {{vars[varselect.step][varselect.variable].options}}</span>
+                        </p>
+                        <div class="form-inline">
+                            <div class="form-group">
+                                <label class="sr-only" for="varselectStep">Step</label>
+                                <select data-ng-change="varselect.variable = null" required class="form-control" id="varselectStep" data-ng-model="varselect.step" data-ng-options="step.iid as step.description for step in steps"></select>
+                            </div>
+                            <div class="form-group">
+                                <label class="sr-only" for="varselectVariable">Variable</label>
+                                <select required data-ng-disabled="varselect.step == null" class="form-control" id="varselectVariable" data-ng-model="varselect.variable" data-ng-options="var.name as var.name for (varname, var) in vars[varselect.step]"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button data-ng-disabled="varselectForm.$invalid" type="submit" class="btn btn-primary" data-ng-click="insertSelectedVariableTemplate(varselect)">Insert</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

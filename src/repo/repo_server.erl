@@ -211,7 +211,7 @@ get_templatelist_for_groups(Groups) ->
         end),
     case Res of
         {atomic, X} when is_list(X) ->
-            io:format("groups: (~p)~ntemplates: (~p)~n", [Groups, X]),
+            %io:format("groups: (~p)~ntemplates: (~p)~n", [Groups, X]),
             X;
         Err -> {error, {"Failed to retrieve templates", Err}}
     end.

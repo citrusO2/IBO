@@ -15,7 +15,7 @@
                         <input required data-ng-model="schema.title" type="text" class="form-control" id="schemaTitle" placeholder="Title">
                     </div>
                     <div class="form-group">
-                        <label for="schemaDescription">Description of the step</label>
+                        <label for="schemaDescription">Description of the step</label> <button type="button" class="btn btn-default btn-xs" data-ng-click="insertNewVariableTemplate(schema, 'description')">Insert Variable</button>
                         <textarea rows="3" style="resize:vertical" required data-ng-model="schema.description" class="form-control" id="schemaDescription" placeholder="Description"></textarea>
                     </div>
 
