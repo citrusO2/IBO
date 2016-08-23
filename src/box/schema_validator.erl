@@ -85,7 +85,7 @@ validate_map(Map) when is_map(Map) ->
     ?CT("the given map must be either of (type=object, properties, no items), (type=aray, items, no properties) or (type string/number/boolean/null, no items, no properties", Map,
         ((maps:get(?TYPE, Map) =:= ?OBJECT andalso maps:is_key(?PROPERTIES, Map) andalso not maps:is_key(?ITEMS, Map)) orelse
             (maps:get(?TYPE, Map) =:= ?ARRAY andalso maps:is_key(?ITEMS, Map) andalso not maps:is_key(?PROPERTIES, Map)) orelse
-            (lists:member(maps:get(?TYPE, Map), [?STRING, ?NUMBER, ?BOOLEAN, ?NULL]) andalso not maps:is_key(?ITEMS, Map) andalso not maps:is_key(?PROPERTIES, Map))))
+            (lists:member(maps:get(?TYPE, Map), [?STRING, ?NUMBER, ?BOOLEAN, ?NULL, ?INTEGER]) andalso not maps:is_key(?ITEMS, Map) andalso not maps:is_key(?PROPERTIES, Map))))
         andalso maps:fold(fun(K, Val, AccIn) -> AccIn andalso validate_keyvalue(K, Val, Map) end, true, Map).
 
 validate_map(Map, ?PROPERTIES) when is_map(Map) ->
