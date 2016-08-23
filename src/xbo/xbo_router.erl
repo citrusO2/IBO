@@ -123,7 +123,7 @@ handle_call(stop, _From, State) ->
 handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info({'EXIT', Pid, normal}, State) ->
-    io:format("xbo_router trapped EXIT signal normal~n"),
+%%    io:format("xbo_router trapped EXIT signal normal~n"),
     NewState = remove_pid_from_state(Pid, State),
     {noreply, NewState};
 handle_info({'EXIT', Pid, _Reason}, State) ->

@@ -113,4 +113,4 @@ any_to_binary(Any) when is_list(Any) ->
 any_to_binary(Any) when is_integer(Any) ->
     integer_to_binary(Any);
 any_to_binary(Any) when is_float(Any)->
-    float_to_binary(Any).
+    list_to_binary(mochinum:digits(Any)).   %mochinum:digits creates a human readable string (=list) representation of a float, the basic erlang conversion creates a representation like: 2.13124121299999990000e+07
