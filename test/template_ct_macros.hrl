@@ -21,7 +21,7 @@
 -define(WEB_NAME, <<"WEB1">>).
 
 -define(REPO_MANAGEGROUPS, [<<"ACL_SAVE_TEMPLATES">>] ).
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], n => 1, managegroups => ?REPO_MANAGEGROUPS }).
+-define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_NAME], managegroups => ?REPO_MANAGEGROUPS }).
 -define(DIRECTORY_ARGS, #{name=>?DIRECTORY_NAME}).
 -define(ERROR_ARGS, #{name=>?ERROR_NAME}).
 -define(WEB_ARGS, #{name=>?WEB_NAME, directory=>?DIRECTORY_NAME, box => ?BOX_NAME, repo => ?REPO_NAME}).

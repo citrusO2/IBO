@@ -19,7 +19,7 @@
 -define(ERROR_SERVER_NAME, <<"ERRORSRV1">>).
 -define(BOX_NAME, <<"BOX1">>).
 -define(REPO_MANAGEGROUPS, [<<"ACL_SAVE_TEMPLATES">>]).
--define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_SERVER_NAME], n => 1,  managegroups => ?REPO_MANAGEGROUPS }).
+-define(REPO_ARGS, #{name =>?REPO_NAME, router => [?ROUTER_NAME], error => [?ERROR_SERVER_NAME], managegroups => ?REPO_MANAGEGROUPS }).
 -define(ERROR_ARGS, #{name => ?ERROR_SERVER_NAME}).
 
 all() -> [start_iactor_test, iactor_restart_test, iactor_restart_test2, iactor_restart_test3, iactor_doublestart_test, iactor_config_test, iactor_config_start_test, get_iactors_test, get_xactors_test, start_iactor_simple_test].

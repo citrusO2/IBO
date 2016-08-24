@@ -23,7 +23,7 @@ install() ->
     RouterArgs = #{name => Router, allowed => [Box]},
     ok = watchdog_server:start_iactor(xbo_router_sup, RouterArgs),
     Repo = <<"REPO1">>,
-    RepoArgs = #{name => Repo, router => [Router], error => [Error], n=>1, managegroups =>[<<"ACL_Allow_Template_Storing">>]},
+    RepoArgs = #{name => Repo, router => [Router], error => [Error], managegroups =>[<<"ACL_Allow_Template_Storing">>]},
     ok = watchdog_server:start_iactor(repo_sup, RepoArgs),
     Web = <<"WEB1">>,
     WebArgs = #{name => Web, directory => Directory, box => Box, repo => Repo},

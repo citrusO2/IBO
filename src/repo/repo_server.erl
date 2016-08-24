@@ -32,7 +32,7 @@
 -export([start_link/1, stop/1, start_template/4, start_template/5, store_template/3, get_templatelist/2, get_template/2, has_store_permission/2, delete_template/3]).
 
 %% starts a new global repo server with its name
--spec start_link(Args :: #{name => binary(), router => nonempty_list(binary()), error => nonempty_list(binary()), n => non_neg_integer(), managegroups => [binary()]}) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
+-spec start_link(Args :: #{name => binary(), router => nonempty_list(binary()), error => nonempty_list(binary()), managegroups => [binary()]}) -> {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
 start_link(Args) ->
     Name = maps:get(name, Args),
     gen_server:start_link({global, Name}, ?MODULE, Args, []).
@@ -91,7 +91,7 @@ init(Args) ->
     Name = maps:get(name, Args),
     io:format("~p (~p) starting~n", [?MODULE, Name]),
     create_tables_if_nonexistent(),
-    Args2 = maps:put(r, update_restartcounter(Name), Args),
+    Args2 = maps:put(r, update_restartcounter(Name), maps:put(n, 1, Args)),
     {ok, helper:map_to_server_state_strict(Args2,record_info(fields, state))}.
 
 handle_call({start_template, Groups, Creator, TemplateName, Args}, _From, State) ->
