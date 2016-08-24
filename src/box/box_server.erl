@@ -150,8 +150,8 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
     {noreply, NewState};
 handle_info(_Info, State) ->
     {noreply, State}.
-terminate(_Reason, _State) ->
-    io:format("~p stopping~n", [?MODULE]),
+terminate(_Reason, State) ->
+    io:format("~p (~p) stopping~n", [?MODULE, State#state.domain]),
     ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 

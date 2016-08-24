@@ -36,8 +36,8 @@
     ]);
 
     //http://stackoverflow.com/questions/14206492/how-do-i-store-a-current-user-context-in-angular
-    iboApp.factory('AuthService', ['$http','$location',
-        function($http, $location) {
+    iboApp.factory('AuthService', ['$http','$location','DataService',
+        function($http, $location, DataService) {
             var currentUser = null;
             var currentHeader = null;
             var currentGroups = null;
@@ -57,6 +57,10 @@
                     wasCookieLoginTried = true;
                     $http.get('/api/directory/user').then(
                         function(res){
+                            DataService.updateIndices();    //logged in successfully
+                            if($location.path() == "/login"){
+                                $location.path('overview');
+                            }
                             currentUser = res.data;
                             success = success || $.noop;
                             success(res);
@@ -85,9 +89,9 @@
                     $location.path('login');
                     $http.get('/api/directory/logout').then(    // deletes session-id from server to force authentication
                         function(res){
-                            console.log(res);   //logout successful
+                            //console.log(res);   //logout successful
                         },function(res){
-                            console.log(res);   //logout incomplete
+                            //console.log(res);   //logout incomplete
                         }
                     )
                 },
@@ -130,12 +134,39 @@
         $httpProvider.interceptors.push('authInterceptor');
     }])
 
-    iboApp.factory('DataService', ['$rootScope',
-        function($rootScope){
-            return{
-                broadcastindices: function(indices){
-                    $rootScope.$broadcast('indicesChange', indices)
+    iboApp.factory('DataService', ['$rootScope','$http',
+        function($rootScope, $http){
+            var indices = [];
+            var updating = false;
+
+            function broadcastIndices(indices){
+                $rootScope.$broadcast('indicesChange', indices)
+            }
+            function updateIndices(){
+                if(!updating){
+                    updating = true;
+                    $http.get('/api/box').then(
+                        function(res){
+                            var indices = res.data.map(function(item){
+                                item.xbolist = item.xbolist.map(function(element){
+                                    element.storedate = new Date(element.storedate)
+                                    return element;
+                                });
+                                return item;
+                            });
+                            updating = false;
+                            broadcastIndices(indices);
+                        }
+                    ),function(res){
+                        updating = false;
+                        //todo: send/display error
+                    }
                 }
+            }
+
+            return{
+                currentIndices: function(){return indices;},
+                updateIndices: function(){updateIndices();}
             }
         }
     ])

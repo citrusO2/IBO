@@ -131,8 +131,8 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
     %TODO: error handling here, log locally because the childprocess should already send problematic ones to the error server
     NewState = remove_pid_from_state(Pid, State),
     {noreply, NewState}.
-terminate(_Reason, _State) ->
-    io:format("~p stopping~n", [?MODULE]),
+terminate(_Reason, State) ->
+    io:format("~p (~p) stopping~n", [?MODULE, State#state.name]),
     ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 

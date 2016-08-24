@@ -131,12 +131,12 @@ handle_call({get_template, TemplateName}, _From, State) ->
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State}.
 
-handle_cast(_Msg, N) -> {noreply, N}.
-handle_info(_Info, N) -> {noreply, N}.
-terminate(_Reason, _N) ->
-    io:format("~p stopping~n", [?MODULE]),
+handle_cast(_Msg, State) -> {noreply, State}.
+handle_info(_Info, State) -> {noreply, State}.
+terminate(_Reason, State) ->
+    io:format("~p (~p) stopping~n", [?MODULE, State#state.name]),
     ok.
-code_change(_OldVsn, N, _Extra) -> {ok, N}.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%%===================================================================
 %%% Internal functions

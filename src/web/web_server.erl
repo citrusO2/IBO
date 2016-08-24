@@ -62,13 +62,13 @@ clear_user_cache(Webserver, SessionId, UserName) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
-init(#{directory := _Directory, box := _Box, repo := _Repo, name := Name} = Args) ->
+init(#{directory := _Directory, box := _Box, repo := _Repo, name := Name} = Args) ->    % forces the availability of the given keys
     process_flag(trap_exit, true), % to call terminate/2 when the application is stopped
-    Name = maps:get(name, Args),
     io:format("~p (~p) starting~n", [?MODULE, Name]),
     create_tables_if_nonexistent(),
 %%    {ok, _} = timer:send_interval(1000 * 60, tick), % every minute
 
+    Port = maps:get(port, Args, 8080),
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", cowboy_static, {file, "./src/webclient/index.html"}},
@@ -80,7 +80,7 @@ init(#{directory := _Directory, box := _Box, repo := _Repo, name := Name} = Args
             {"/[...]", cowboy_static, {dir, "./src/webclient", [{mimetypes, cow_mimetypes, all}]}}
         ]}
     ]),
-    {ok, _} = cowboy:start_http(http, 100, [{port, 8080}],
+    {ok, _} = cowboy:start_http(Name, 100, [{port, Port}],
         [{env, [{dispatch, Dispatch}]}]
     ),
 
@@ -95,16 +95,16 @@ handle_call( {cache_user, User}, _From, State) ->
 handle_call( {clear_user_cache, SessionId, UserName}, _From, State) ->
     {reply, delete_session_and_username_cache(SessionId, UserName) , State};
 handle_call(stop, _From, State) ->
-    cowboy:stop_listener(http),
+    cowboy:stop_listener(State#state.name),
     {stop, normal, stopped, State}.
 handle_cast(_Msg, State) -> {noreply, State}.
 %%handle_info(tick, State) ->
 %%    clear_old_cache(),    % clearing old cached users
 %%    {noreply, State};
 handle_info(_Info, State) -> {noreply, State}.
-terminate(_Reason, _State) ->
-    io:format("~p stopping~n", [?MODULE]),
-    cowboy:stop_listener(http),
+terminate(_Reason, State) ->
+    io:format("~p (~p) stopping~n", [?MODULE, State#state.name]),
+    cowboy:stop_listener(State#state.name),
     ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 

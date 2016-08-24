@@ -14,7 +14,7 @@
                         clearMsgs();
                         $location.path('overview');
                     }, function(error){
-                        console.log(error);
+                        //console.log(error);
                         if(error.status == 401){
                             $scope.error = "Could not authorize login, check username and password!";
                         } else{
@@ -71,28 +71,18 @@
     iboControllers.controller('OverviewCtrl', ['$scope', 'AuthService', '$http', 'DataService',
         function ($scope, AuthService, $http, DataService) {
             $scope.user = AuthService.currentUser();
-            $scope.indices = null;
+            $scope.indices = DataService.currentIndices();
             $scope.error = null;
 
-            $http.get('/api/box'/*, AuthService.currentHeader()*/).then(
-                function(res){
-                    $scope.indices = res.data.map(function(item){
-                        item.xbolist = item.xbolist.map(function(element){
-                            element.storedate = new Date(element.storedate)
-                            return element;
-                        });
-                        return item;
-                    });
-                    DataService.broadcastindices($scope.indices)
-                },function(res){
-                    $scope.error = "Could not retrieve box-indices!";
-                }
-            );
+            $scope.$on('indicesChange', function(event, indices) {
+                $scope.indices = indices
+            });
+            DataService.updateIndices();
         }
     ]);
 
-    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService','SchemaV4Service', '$sce','$location',
-        function($scope, $routeParams, $http, AuthService, SchemaV4Service, $sce, $location) {
+    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService','SchemaV4Service', '$sce','$location','DataService',
+        function($scope, $routeParams, $http, AuthService, SchemaV4Service, $sce, $location, DataService) {
             $scope.xboId = $routeParams.xboId;
             $scope.error = null;
             $scope.emptySchema = false;
@@ -139,6 +129,7 @@
             );
 
             function onSendSuccess(res){
+                DataService.updateIndices();
                 $scope.success = "Data sent successfully, redirecting...";
                 fadeOutInputBox(function(){
                     setTimeout(function(){
@@ -367,12 +358,12 @@
 
             // normal init done, check if template needs to be loaded from the repo-server
             function loadTemplateFromServer(){
-                console.log($routeParams.templateName);
+                // console.log($routeParams.templateName);
                 $http.get('/api/repo/template/' + $routeParams.templateName).then(
                     function(res){
                         //initialise GUI from template
                         var t = res.data;
-                        console.log(t);
+                        //console.log(t);
 
                         //load basic information
                         $scope.templateSettings.name = t.name;
@@ -510,7 +501,7 @@
                     $scope.steps.splice(getStepIndex($scope.currentStep), 1);
                     $scope.currentStep.umlState.remove();
                     $scope.currentStep = null;
-                    console.log($scope.steps);
+                    //console.log($scope.steps);
                 }
             };
 
@@ -550,7 +541,7 @@
             };
             $scope.insertNewVariableTemplate = function(Reference, ReferenceName){
                 updateStepVariables();
-                console.log($scope.vars);
+                //console.log($scope.vars);
                 $scope.varselect = {};
                 $scope.varselect.ref = Reference;
                 $scope.varselect.refName = ReferenceName;
@@ -1052,7 +1043,7 @@
                             //a.push([getStepNrByIID(c.step), $scope.vars[Step.iid][c.variable].name, c.operator, c.value]);  //redirect vid to variable name
                             break;
                         case "schema":
-                            console.log(Args[i]);
+                            //console.log(Args[i]);
                             //update the internal IDs of the variabletemplates before creating the schema
                             Args[i].description = updateTemplateVariableIDs(Args[i].description);
                             a.push(SchemaV4Service.createSchema(Args[i]));

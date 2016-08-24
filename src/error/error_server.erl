@@ -72,8 +72,8 @@ handle_call(stop, _From, State) ->
 
 handle_cast(_Msg, State) -> {noreply, State}.
 handle_info(_Info, State) -> {noreply, State}.
-terminate(_Reason, _State) ->
-    io:format("~p stopping~n", [?MODULE]),
+terminate(_Reason, State) ->
+    io:format("~p (~p) stopping~n", [?MODULE, State#state.name]),
     ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 

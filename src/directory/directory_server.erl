@@ -139,8 +139,8 @@ handle_call(stop, _From, S) ->
 
 handle_cast(_Msg, S) -> {noreply, S}.
 handle_info(_Info, S) -> {noreply, S}.
-terminate(_Reason, _S) ->
-    io:format("~p stopping~n", [?MODULE]),
+terminate(_Reason, S) ->
+    io:format("~p (~p) stopping~n", [?MODULE, S#state.name]),
     ok.
 code_change(_OldVsn, S, _Extra) -> {ok, S}.
 
