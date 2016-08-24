@@ -76,7 +76,13 @@
 
             $http.get('/api/box'/*, AuthService.currentHeader()*/).then(
                 function(res){
-                    $scope.indices = res.data;
+                    $scope.indices = res.data.map(function(item){
+                        item.xbolist = item.xbolist.map(function(element){
+                            element.storedate = new Date(element.storedate)
+                            return element;
+                        });
+                        return item;
+                    });
                     DataService.broadcastindices($scope.indices)
                 },function(res){
                     $scope.error = "Could not retrieve box-indices!";
@@ -85,8 +91,8 @@
         }
     ]);
 
-    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService','SchemaV4Service', '$sce',
-        function($scope, $routeParams, $http, AuthService, SchemaV4Service, $sce) {
+    iboControllers.controller('BoxdetailCtrl', ['$scope', '$routeParams','$http','AuthService','SchemaV4Service', '$sce','$location',
+        function($scope, $routeParams, $http, AuthService, SchemaV4Service, $sce, $location) {
             $scope.xboId = $routeParams.xboId;
             $scope.error = null;
             $scope.emptySchema = false;
@@ -96,8 +102,6 @@
                     $scope.schema = SchemaV4Service.orderSchema(res.data);
                     //update schema description to display variable templates better
                     $scope.schema.description = $sce.trustAsHtml(highlightVariables($scope.schema.description));
-
-                    console.log("schema boxdetailctrl", $scope.schema);
 
                     $scope.form = [
                         "*",
@@ -115,22 +119,14 @@
 
                         // Then we check if the form is valid
                         if (form.$valid) {
-                            console.log($scope.model);
-                            $http.post('/api/box/'+ $scope.xboId, $scope.model/*, AuthService.currentHeader()*/).then(
-                                function(res){$scope.success = "Data sent successfully";},
-                                function(res){$scope.error = res.data.error;}
-                            );
+                            $http.post('/api/box/'+ $scope.xboId, $scope.model).then(onSendSuccess,onSendError);
                         }
                     }
                     $scope.emptySchema = Object.keys($scope.schema.properties).length == 0;
 
                     $scope.onEmptySubmit = function(){
-                        $http.post('/api/box/'+ $scope.xboId, {} ).then(
-                            function(res){$scope.success = "Data sent successfully";},
-                            function(res){$scope.error = res.data.error;}
-                        );
+                        $http.post('/api/box/'+ $scope.xboId, {} ).then(onSendSuccess,onSendError);
                     }
-
                 },function(res){
                     $scope.error = "Could not retrieve args for the box! ";
                     if(res.status == 500)
@@ -141,6 +137,31 @@
                         $scope.error += "You do not have access the requested resource (403)";
                 }
             );
+
+            function onSendSuccess(res){
+                $scope.success = "Data sent successfully, redirecting...";
+                fadeOutInputBox(function(){
+                    setTimeout(function(){
+                        $scope.$apply(function(){$location.path('overview');}); //needs $scope.$apply as $location.path is called by jquery and not angular
+                    }, 2000);   //timeout so that the user can see what is happening
+                });
+            }
+
+            function onSendError(res){
+                $scope.error = res.data.error;
+            }
+
+            function fadeOutInputBox(FinishCallback){
+                var $inputBox = $("#ibo-inputbox");
+                $inputBox.width($inputBox.width()); //set the width absolute in pixel to avoid animation side effects
+                $inputBox.animate({
+                    marginLeft: parseInt($inputBox.css('marginLeft'),10) == 0 ? $inputBox.outerWidth() : 0
+                }, 400, function(){
+                    $inputBox.hide();
+                    FinishCallback = FinishCallback || $.noop;
+                    FinishCallback();
+                });
+            }
 
             function highlightVariables(DescriptionString){
                 var str = DescriptionString;
@@ -180,12 +201,15 @@
 
             $scope.startprocess = function(processName){
                 $http.post('/api/repo/process/'+processName,processName/*,AuthService.currentHeader()*/).then(
-                    function(res){$scope.success = "Process started successfully";},
-                    function(res){$scope.error = res.data.error;});
+                    function(res){
+                        $scope.success = "Process started successfully, redirecting...";
+                        setTimeout(function(){
+                            $scope.$apply(function(){$location.path('overview');});
+                        }, 2000);   //timeout so that the user can see what is happening
+                    },function(res){$scope.error = res.data.error;});
             };
 
             $scope.editprocess = function(processName){
-                console.log("editprocess", processName);
                 $scope.$apply(function(){
                     $location.path('template/' + processName);
                 });

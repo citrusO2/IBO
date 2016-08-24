@@ -84,6 +84,14 @@ body {
   margin-top: 0;
 }
 
+/* make scrollbar on main div instead of on the body*/
+html, body, #main-container, #main-row, #main{
+    height: 100%;
+}
+
+.main{
+    overflow: auto;
+}
 
 /*
  * Placeholder dashboard ideas

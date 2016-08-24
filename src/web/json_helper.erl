@@ -23,7 +23,7 @@ prepare(Template) when is_record(Template, ibo_repo_template) ->
     PreparedTemplate = Template#ibo_repo_template{
         steps = prepare(Template#ibo_repo_template.steps),
         gui = prepare(Template#ibo_repo_template.gui),
-        created_at = calendar:now_to_local_time(Template#ibo_repo_template.created_at),
+        created_at = calendar:now_to_universal_time(Template#ibo_repo_template.created_at),
         transform = undefined   % transform should not be transmitted to web-client, should one be available
     },
     ?record_to_map(ibo_repo_template, PreparedTemplate);
@@ -53,7 +53,7 @@ prepare(Transition) when is_record(Transition, ibo_repo_gui_transition) ->
 prepare(Ref) when is_record(Ref, ibo_boxindex) ->
     SubR = [?record_to_tuplelist(ibo_boxindex_elementpreview,
         E#ibo_boxindex_elementpreview{
-            storedate = calendar:now_to_local_time(E#ibo_boxindex_elementpreview.storedate)
+            storedate = calendar:now_to_universal_time(E#ibo_boxindex_elementpreview.storedate)
         }) || E <- Ref#ibo_boxindex.xbolist ],
     R1 = Ref#ibo_boxindex{xbolist = SubR},
     ?record_to_tuplelist(ibo_boxindex, R1);

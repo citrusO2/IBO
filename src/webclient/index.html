@@ -111,19 +111,19 @@
     </form>
 </div>
 
-<div class="container-fluid" data-ng-controller="NavCtrl">
-    <div class="row">
-        <div id="sidebar" class="col-sm-3 col-md-2 sidebar" data-ng-show="isLoggedIn">
+<div id="main-container" class="container-fluid" data-ng-controller="NavCtrl">
+    <div id="main-row" class="row">
+        <div id="sidebar" class="col-sm-3 col-md-3 col-lg-2 sidebar" data-ng-show="isLoggedIn">
             <ul class="nav nav-sidebar">
                 <li><a href="#/overview" data-active-link="active">Overview</a></li>
                 <li><a href="#/proclist" data-active-link="active">Start New Process</a></li>
                 <li><a href="#/template" data-active-link="active">Create New Process Template</a></li>
             </ul>
             <ul class="nav nav-sidebar" id="activeTasks">
-                <li data-ng-repeat="task in tasks"><a href="#/box/{{task.xboid}}" data-active-link="active">{{task.xbotemplate}}</a></li>
+                <li data-ng-repeat="task in tasks"><a href="#/box/{{task.xboid}}" data-active-link="active"><div class="row"><div class="col-sm-8 col-md-9">{{task.xbostepdescription}}<br><small>{{task.xbotemplate}}</small></div><div class="col-sm-4 col-md-3"><small>{{task.storedate | date : 'EEE HH:mm'}}</small></div></div></a></li>
             </ul>
         </div>
-        <div id="main" data-ng-view class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main" data-ng-show="isLoggedIn">
+        <div id="main" data-ng-view class="col-sm-9 col-sm-offset-3 col-md-9 col-md-offset-3 col-lg-10 col-lg-offset-2 main" data-ng-show="isLoggedIn">
             <h1 class="page-header">Dashboard</h1>
 
             <div class="row">

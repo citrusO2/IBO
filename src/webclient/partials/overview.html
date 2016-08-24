@@ -27,7 +27,7 @@
             </thead>
             <tbody>
             <tr data-ng-repeat="task in index.xbolist">
-                <td>{{task.storedate}}</td>
+                <td>{{task.storedate | date : 'd MMM y, HH:mm:ss'}}</td>
                 <td>{{task.xbotemplate}}</td>
                 <td>{{task.xbostepdescription}}</td>
             </tr>
