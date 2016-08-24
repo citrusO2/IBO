@@ -39,8 +39,12 @@
     iboControllers.controller('ViewCtrl', ['$scope','AuthService',
         function($scope, AuthService) {
             $scope.isLoggedIn = AuthService.isLoggedIn();
+            $scope.user = AuthService.currentUser();
             $scope.$watch( AuthService.isLoggedIn, function ( value ) {
                 $scope.isLoggedIn = value;
+                if(value){
+                    $scope.user = AuthService.currentUser();
+                }
             });
 
             $scope.logout = AuthService.logout;
