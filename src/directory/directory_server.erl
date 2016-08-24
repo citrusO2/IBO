@@ -25,8 +25,8 @@
 %% API ---------------------------------------------------------------
 -export([start_link/1, stop/1,
     get_user/2, search_user/2,
-    get_group/2, write_group/2, search_group/2, get_all_groups/1,
-    create_user/2, create_user/3, update_user/2, update_user/3, get_user_info/3, resolve_usergroups/2]).
+    get_group/2, write_group/2, write_group/4, write_group/5, search_group/2, get_all_groups/1,
+    create_user/2, create_user/3, create_user/6, update_user/2, update_user/6, update_user/3, get_user_info/3, resolve_usergroups/2]).
 
 %% starts a new global directory server with the given name as the global name
 -spec start_link(Args :: #{name => binary()}) ->  {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
@@ -58,6 +58,10 @@ get_group(Directory, Groupname) ->
 -spec write_group(Directory :: binary(), Group :: #ibo_group{}) -> ok | {error, term()}.
 write_group(Directory, Group) ->
     gen_server:call({global, Directory}, {write_group, Group}).
+write_group(Directory, Name, Description, Parents)->
+    write_group(Directory, Name, Description, Parents, false).
+write_group(Directory, Name, Description, Parents, IsRulegroup)->
+    write_group(Directory, #ibo_group{name = Name, description = Description, parents = Parents, is_rulegroup = IsRulegroup}).
 
 %% same as search_user, just for groups by groupname
 -spec search_group(Directory :: binary(), SearchString :: binary()) -> [#ibo_group{}] | [] | {error, term()}.
@@ -77,6 +81,8 @@ get_all_groups(Directory) ->
 -spec create_user(Directory :: binary(), User :: #ibo_user{}, Password :: binary()) ->  ok | {error, term()}.
 create_user(Directory, User, Password) ->   % syntactic sugar
     gen_server:call({global, Directory}, {create_user, User, Password}).
+create_user(Directory, Username, Firstname, Lastname, Groups, Password)->
+    create_user(Directory, #ibo_user{username = Username, firstname = Firstname, lastname = Lastname, groups = Groups, password = Password}).
 
 -spec create_user(Directory :: binary(), User :: #ibo_user{}) ->  ok | {error, term()}.
 create_user(Directory, User) ->
@@ -87,6 +93,8 @@ update_user(Directory, User) ->
     create_user(Directory, User).
 update_user(Directory, User, Password) ->
     create_user(Directory, User, Password).
+update_user(Directory, Username, Firstname, Lastname, Groups, Password)->
+    create_user(Directory, Username, Firstname, Lastname, Groups, Password).
 
 %% retrieves a user by username and password, gives back an error when password is wrong or the username cannot be found. The Password gets removed from the result record
 -spec get_user_info(Directory :: binary(), Username :: #ibo_user{}, Password :: binary()) -> #ibo_user{} | {error, term()}.
