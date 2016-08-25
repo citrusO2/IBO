@@ -13,14 +13,6 @@
                             You need to save the step before you can access newly defined variables here.
                             The variabletemplate, that is used to determine, which variable needs to be includeded, has the form [StepNrInternalID|VariableName]. Do not modify the variabletemplate and if the variable name is changed later, the variabletemplate has to be inserted again.
                         </div>
-                        <p data-ng-show="vars[varselect.step][varselect.variable] != null">
-                            name: {{vars[varselect.step][varselect.variable].name}}<br>
-                            title: {{vars[varselect.step][varselect.variable].title}}<br>
-                            description:  {{vars[varselect.step][varselect.variable].description}}<br>
-                            type: {{vars[varselect.step][varselect.variable].type}}<br>
-                            required: {{vars[varselect.step][varselect.variable].required}}
-                            <span data-ng-show="vars[varselect.step][varselect.variable].options != null"><br>options: {{vars[varselect.step][varselect.variable].options}}</span>
-                        </p>
                         <div class="form-inline">
                             <div class="form-group">
                                 <label class="sr-only" for="varselectStep">Step</label>
@@ -31,6 +23,35 @@
                                 <select required data-ng-disabled="varselect.step == null" class="form-control" id="varselectVariable" data-ng-model="varselect.variable" data-ng-options="var.name as var.name for (varname, var) in vars[varselect.step]"></select>
                             </div>
                         </div>
+                        <br>
+                        <table class="table table-striped table-bordered" data-ng-show="vars[varselect.step][varselect.variable] != null">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 80px;">name</th>
+                                    <td>{{vars[varselect.step][varselect.variable].name}}</td>
+                                </tr>
+                                <tr>
+                                    <th>title</th>
+                                    <td>{{vars[varselect.step][varselect.variable].title}}</td>
+                                </tr>
+                                <tr>
+                                    <th>description</th>
+                                    <td>{{vars[varselect.step][varselect.variable].description}}</td>
+                                </tr>
+                                <tr>
+                                    <th>type</th>
+                                    <td>{{vars[varselect.step][varselect.variable].type}}</td>
+                                </tr>
+                                <tr>
+                                    <th>required</th>
+                                    <td>{{vars[varselect.step][varselect.variable].required}}</td>
+                                </tr>
+                                <tr data-ng-show="vars[varselect.step][varselect.variable].options != null">
+                                    <th>options</th>
+                                    <td><span data-ng-repeat="option in vars[varselect.step][varselect.variable].options">{{option.text}}{{ $last? '': ', '; }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
