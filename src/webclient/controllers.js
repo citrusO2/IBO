@@ -745,28 +745,53 @@
             function commandsToListOfStrings(commands, initCommand){
                 var list = [];
                 if(initCommand != null)
-                    list.push(commandToString(initCommand));
-                for(var i = 0; i < commands.length; i++)
-                    list.push(commandToString(commands[i]));
+                    list = list.concat(commandToString(initCommand));
+                for(var i = 0; i < commands.length; i++){
+                    list = list.concat(commandToString(commands[i]));
+                }
                 return list;
             }
 
+            //Transforms the commands into readable strings used in the UML boxes
             function commandToString(Command){
-                var s = Command.library + "->" + Command.command;
+                var commandText;
+                var commands = [];
+                commands.push((Command.library.indexOf("xlib_") != -1 ? Command.library.replace("xlib_","") : Command.library) + "->" + Command.command);
                 if(Command.args == null || Command.args.length == 0)
-                    return s;
-                return s + "->" + Command.args.join(",");
+                    return commands;
+
+                commands[0] += "->";
+                console.log(Command);
+                if(Command.args[0]['variables'] != null){
+                    //schema with variables
+                    commands[0] += "[" + Command.args[0]['variables'].map(function(variable){return variable.name}).join(",") + "]";
+                } else if(Command.library == 'xlib_basic' && Command.command == 'send'){
+                    commands[0] += getStepByIID(Command.args[0]).description;
+                } else if(Command.library == 'xlib_basic' && Command.command == 'cjump'){
+                    commands.push("    ");
+                    commands[0] += getStepByIID(Command.args[1].step).description + ":" ;
+                    commands[1] += Command.args[1].variable + " " +Command.args[1].operator + " '" + Command.args[1].value + "', line" + Command.args[0];
+                }else {
+                    commands[0] += Command.args.join(",");
+                }
+                return commands;
             }
 
             function updateUmlState(Step, Description, Domain, Local){
                 //update text
                 var umlName = getStateName(Description, Domain, Local);
                 var commandList = commandsToListOfStrings(Step.commands, Step.initCommand);
+                var maxLengthOfStrings = getMaxLengthOfStrings(commandList, umlName)
+                if(Step.initCommand != null){
+                    commandList.splice(1,0,Array(maxLengthOfStrings+1).join('-'));  //adds a line of '-' between the init command and the other commands
+                }
+
                 Step.umlState.set('name', umlName);
                 Step.umlState.set('events', commandList);
 
                 //update size
-                var umlWidth = getMaxLengthOfStrings(commandList, umlName) * 8 + 10;
+                var umlWidth = maxLengthOfStrings * 8 + 10;
+
                 var umlHeight = 30 + commandList.length * 14;
                 //Step.umlState.set('size', { width: umlWidth, height: 100 });
                 Step.umlState.resize(umlWidth, umlHeight);
@@ -776,7 +801,7 @@
                 var checked = []
                 for(var i = 0; i < Step.commands.length; i++){
                     if(Step.commands[i].library == 'xlib_basic' && Step.commands[i].command == 'send' && Step.commands[i].args != null && Step.commands[i].args[0] != null){
-                        var transLabel = "line" + (Step.initCommand == null ? i+1 : i+2) +":send";
+                        var transLabel = "line" + /*(Step.initCommand == null ? i+1 : i+2)*/ (i+1) +":send";
                         //check if transition already exists
                         var oldTransIndex = getUmlSendTransitionIndexByCommand(Step.commands[i], Step.umlTransitions);
                         if(oldTransIndex != -1){
@@ -793,7 +818,7 @@
                         }
                     }
                     if(Step.commands[i].library == 'xlib_basic' && Step.commands[i].command == 'finish'){
-                        var transLabel = "line" + (Step.initCommand == null ? i+1 : i+2) +":finish";
+                        var transLabel = "line" + /*(Step.initCommand == null ? i+1 : i+2)*/ (i+1) +":finish";
                         var oldTransIndex = getUmlFinishTransitionIndex(Step.umlTransitions);
                         if(oldTransIndex != -1){
                             Step.umlTransitions[oldTransIndex].label(0, {attrs: { text: { text: transLabel}}});

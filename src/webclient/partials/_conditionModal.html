@@ -12,14 +12,6 @@
                             <h4>Info</h4>
                             You need to save the step before you can access newly defined variables here. If the variable name is changed later, the condition has to be updated manually.
                         </div>
-                        <p data-ng-show="vars[condition.step][condition.variable] != null">
-                            name: {{vars[condition.step][condition.variable].name}}<br>
-                            title: {{vars[condition.step][condition.variable].title}}<br>
-                            description:  {{vars[condition.step][condition.variable].description}}<br>
-                            type: {{vars[condition.step][condition.variable].type}}<br>
-                            required: {{vars[condition.step][condition.variable].required}}
-                            <span data-ng-show="vars[condition.step][condition.variable].options != null"><br>options: {{vars[condition.step][condition.variable].options}}</span>
-                        </p>
                         <div class="form-inline">
                             <div class="form-group">
                                 <label class="sr-only" for="conditionStep">Step</label>
@@ -50,6 +42,35 @@
                                 <input class="form-control" data-ng-if="vars[condition.step][condition.variable].type =='string'" data-ng-model="condition.value" id="conditionValue" type="text"><!-- string not required as it could be an empty string -->
                             </div>
                         </div>
+                        <br>
+                        <table class="table table-striped table-bordered" data-ng-show="vars[condition.step][condition.variable] != null">
+                            <tbody>
+                            <tr>
+                                <th style="width: 80px;">name</th>
+                                <td>{{vars[condition.step][condition.variable].name}}</td>
+                            </tr>
+                            <tr>
+                                <th>title</th>
+                                <td>{{vars[condition.step][condition.variable].title}}</td>
+                            </tr>
+                            <tr>
+                                <th>description</th>
+                                <td>{{vars[condition.step][condition.variable].description}}</td>
+                            </tr>
+                            <tr>
+                                <th>type</th>
+                                <td>{{vars[condition.step][condition.variable].type}}</td>
+                            </tr>
+                            <tr>
+                                <th>required</th>
+                                <td>{{vars[condition.step][condition.variable].required}}</td>
+                            </tr>
+                            <tr data-ng-show="vars[condition.step][condition.variable].options != null">
+                                <th>options</th>
+                                <td><span data-ng-repeat="option in vars[condition.step][condition.variable].options">{{option.text}}{{ $last? '': ', '; }}</span></td>
+                            </tr>
+                            </tbody>
+                        </table>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
