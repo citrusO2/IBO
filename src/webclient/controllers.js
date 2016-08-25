@@ -216,7 +216,12 @@
                         $scope.success = "Deleted template successfully";
                         $scope.processes.splice(index,1);
                     },
-                    function(res){$scope.error = res.data.error;});
+                    function(res){
+                        if(res.status == 403)
+                            $scope.error = "You do not have permission to delete the template"/*res.data.error;*/
+                        else
+                            $scope.error = "Error deleting template, error code " + res.status;
+                    });
             };
 
         }
@@ -269,7 +274,8 @@
                 height: canvas.height(),
                 gridSize: 5,
                 model: graph,
-                restrictTranslate: true, // so that elements cannot move outside the bounding box
+                restrictTranslate: true,    // so that elements cannot move outside the bounding box
+                clickThreshold: 1           // fixes not being able to select a step
             });
 
             //initialise events on the GUI (need to use $scope.$apply because angular does not know about the changes otherwise)
@@ -445,7 +451,8 @@
                         startTransition.set('vertices', t.gui.start.vertices);
                         endState.position(t.gui.endpoint.x, t.gui.endpoint.y);
 
-                        $scope.iid = t.steps.length + 1;    // set the internal step-id to a new empty internal id
+                        iid = t.steps.length + 1;   // set the internal step-id to a new empty internal id
+                        updateStepVariables();      //steps are all initialised, create internal variable store
                     },function(res){
                         $scope.error = "Could not the template from the server! ";
                         if(res.status == 500)

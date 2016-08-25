@@ -92,7 +92,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label class="sr-only" for="commandCom{{$index}}">The command from the selected library</label>
-                                        <select data-ng-change="command.args = []" data-ng-disabled="command.library == null" class="form-control" id="commandCom{{$index}}" data-ng-model="command.command" data-ng-options="comname as comname for (comname, props) in editStep.domain.info.libraries[command.library]"></select>
+                                        <select data-ng-change="command.args = []" data-ng-disabled="command.library == null" class="form-control" id="commandCom{{$index}}" data-ng-model="command.command" data-ng-options="comname as comname for (comname, props) in editStep.domain.info.libraries[command.library] | noInitProperty"></select>
                                     </div>
                                     <div class="form-group" data-ng-repeat="arg in editStep.domain.info.libraries[command.library][command.command].args">
                                         <label class="sr-only" for="commandArg{{$parent.$index}}{{arg.name}}">The {{$index}}. argument ({{arg.name}}) from the selected library</label>

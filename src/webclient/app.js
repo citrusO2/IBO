@@ -238,6 +238,18 @@
         };
     }]);
 
+    //workaround to prevent users from using init functions in the list of commands by simply filtering
+    iboApp.filter('noInitProperty', [ function(){
+        return function (object){
+            var Keys = {};
+            for(var keyName in object){
+                if(keyName != 'init')
+                    Keys[keyName] = 'dummy';    //only the keyname is relevant, the value is ignored
+            }
+            return Keys;
+        };
+    }]);
+
     iboApp.factory('SchemaV4Service', [ function() {
         //creates the actual json schema used later by client+server
         var createSchemaV4 = function(Schema){

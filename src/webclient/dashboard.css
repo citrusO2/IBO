@@ -93,6 +93,10 @@ html, body, #main-container, #main-row, #main{
     overflow: auto;
 }
 
+#login{
+    margin-bottom: -100%;  /* fix for scrollbar appearing on the login page */
+}
+
 /*
  * Placeholder dashboard ideas
  */
