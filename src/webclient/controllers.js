@@ -1063,11 +1063,14 @@
                 for(var i = 0; i < Args.length; i++){
                     var type = getArgType(Step, Library, Command, i);
                     switch(type){
-                        case "integer":
-                            if(Library == "xlib_basic" && Command == "cjump")   //TODO: create own data type for command-nr, this is a hack and does not even consider init (+1 only if there is an init -> currently there is only the box which has an init, otherwise not!)
+                        case "line":
+                            if(Step.initCommand != null)
                                 a.push(Args[i] + 1);
                             else
                                 a.push(Args[i]);
+                            break;
+                        case "integer":
+                            a.push(Args[i]);
                             break;
                         case "step": //redirect to index of step, instead of internal id
                             a.push(getStepNrByIID(Args[i]));    // step consists of first the new StepNr that should be executed and second of the destination name
@@ -1097,11 +1100,14 @@
                 for(var i = 0; i < Args.length; i++){
                     var type = getArgType(Step, Library, Command, i);
                     switch(type){
-                        case "integer":
-                            if(Library == "xlib_basic" && Command == "cjump")   //TODO: create own data type for command-nr, this is a hack and does not even consider init (+1 only if there is an init -> currently there is only the box which has an init, otherwise not!)
+                        case "line":
+                            if(Step.initCommand != null)
                                 a.push(Args[i] - 1);
                             else
                                 a.push(Args[i]);
+                            break;
+                        case "integer":
+                            a.push(Args[i]);
                             break;
                         case "step":
                             a.push(Args[i]);    // internal id equals the step-nr from erlang

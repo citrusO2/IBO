@@ -107,6 +107,11 @@ check_xbo_arg([<<"integer">> | OtherArgTypes], [GivenArg | OtherGivenArgs]) ->
         is_integer(GivenArg) -> check_xbo_arg(OtherArgTypes, OtherGivenArgs);
         true -> {error, "Argument must be of type integer"}
     end;
+check_xbo_arg([<<"line">> | OtherArgTypes], [GivenArg | OtherGivenArgs]) ->
+    if
+        is_integer(GivenArg), GivenArg > 0 -> check_xbo_arg(OtherArgTypes, OtherGivenArgs);
+        true -> {error, "Argument must be of type line and > 0"}    % should also have a maximum, which is the length of commands in the step
+    end;
 check_xbo_arg([<<"condition">> | OtherArgTypes], [GivenArg | OtherGivenArgs]) ->
     if
         is_function(GivenArg) -> check_xbo_arg(OtherArgTypes, OtherArgTypes);

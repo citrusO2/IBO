@@ -86,6 +86,7 @@
                             <dnd-nodrag>
                                 <div dnd-handle class="dnd-handle-element">:::</div>
                                 <div class="form-inline">
+
                                     <div class="form-group">
                                         <label class="sr-only" for="commandLib{{$index}}">Library of the command</label>
                                         <select class="form-control" id="commandLib{{$index}}" data-ng-model="command.library" data-ng-options="libname as libname for (libname, props) in editStep.domain.info.libraries"></select>
@@ -97,7 +98,8 @@
                                     <div class="form-group" data-ng-repeat="arg in editStep.domain.info.libraries[command.library][command.command].args">
                                         <label class="sr-only" for="commandArg{{$parent.$index}}{{arg.name}}">The {{$index}}. argument ({{arg.name}}) from the selected library</label>
                                         <select data-ng-if="arg.type == 'step'" class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]" data-ng-options="step.iid as step.description for step in steps"></select>
-                                        <input data-ng-if="arg.type == 'integer'" type="number"  class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]">
+                                        <select data-ng-if="arg.type == 'line'" class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]" data-ng-options="'line '+line for line in [] | range:1:editStep.commands.length+1:($parent.$parent.$index+1)"></select>
+                                        <input data-ng-if="arg.type == 'integer'" type="number" step="1" data-ng-pattern="/^(0|\-?[1-9][0-9]*)$/" class="form-control" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-model="command.args[$index]">
                                         <button data-ng-if="arg.type == 'schema'" class="btn btn-default" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-init="command.args[$index] = command.args[$index] == null ? {} : command.args[$index]" data-ng-click="editCurrentSchema(command.args, $index)">EditSchema</button><button data-ng-if="arg.type == 'schema'" class="btn btn-default" data-ng-click="previewCurrentSchema(command.args[$index])" data-ng-disabled="command.args[$index].title == null">Preview</button>
                                         <button data-ng-if="arg.type == 'condition'" class="btn btn-default" id="commandArg{{$parent.$index}}{{arg.name}}" data-ng-init="command.args[$index] = command.args[$index] == null ? {} : command.args[$index]" data-ng-click="editCurrentCondition(command.args, $index)">EditCondition</button>
                                     </div>

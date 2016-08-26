@@ -250,6 +250,21 @@
         };
     }]);
 
+    //http://stackoverflow.com/questions/11160513/angularjs-ng-options-create-range
+    iboApp.filter('range', function() {
+        return function(input, min, max, skip) {
+            min = parseInt(min); //Make string input int
+            max = parseInt(max);
+            skip = parseInt(skip)
+            console.log("skip", skip, "min", min, "max", max, "input", input);
+            for (var i=min; i<max; i++){
+                if(i != skip)
+                    input.push(i);
+            }
+            return input;
+        };
+    });
+
     iboApp.factory('SchemaV4Service', [ function() {
         //creates the actual json schema used later by client+server
         var createSchemaV4 = function(Schema){

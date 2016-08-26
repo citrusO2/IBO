@@ -27,7 +27,7 @@ xlib_info() ->
                 #{
                     name => <<"LineNr">>,
                     description => <<"The line number that the execution should jump to">>,
-                    type => <<"integer">>   % work in progress
+                    type => <<"line">>   % field has to be an integer with min = 1 and max = line-nr and is not allowed to jump to the same line
                 },
                 #{
                     name => <<"Condition">>,
