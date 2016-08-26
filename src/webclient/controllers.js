@@ -644,13 +644,23 @@
                     var t = getExportTemplate();
 
                     $http.post('/api/repo/template/'+ t.name, t /*, AuthService.currentHeader()*/).then(
-                        function(res){$scope.success = "Template stored successfully";},
+                        function(res){
+                            $scope.success = "Template stored successfully";
+                            $scope.isSaved = true;
+                        },
                         function(res){$scope.error = res.data.error;}
                     );
                 } catch(err){
                     $scope.error = "Error in template, saving not possible";
                 }
                 $('#templateSettingsModal').modal('hide');
+            }
+
+            $scope.conditionText = function(Arg){
+                if (Arg.step != null)
+                    return (getStepByIID(Arg.step)).description + ":" + Arg.variable + " " + Arg.operator + " '" + Arg.value + "'";
+                else
+                    return "New Condition";
             }
 
             function getStepByIID(iid){
@@ -761,7 +771,7 @@
                     return commands;
 
                 commands[0] += "->";
-                console.log(Command);
+                //console.log(Command);
                 if(Command.args[0]['variables'] != null){
                     //schema with variables
                     commands[0] += "[" + Command.args[0]['variables'].map(function(variable){return variable.name}).join(",") + "]";

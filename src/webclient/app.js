@@ -256,7 +256,7 @@
             min = parseInt(min); //Make string input int
             max = parseInt(max);
             skip = parseInt(skip)
-            console.log("skip", skip, "min", min, "max", max, "input", input);
+            //console.log("skip", skip, "min", min, "max", max, "input", input);
             for (var i=min; i<max; i++){
                 if(i != skip)
                     input.push(i);
