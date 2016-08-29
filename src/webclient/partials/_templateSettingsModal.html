@@ -26,8 +26,8 @@
                         <input id="templateSettingsTTL" required data-ng-model="templateSettings.ttl" type="number" step="1" data-ng-pattern="/^(0|\-?[1-9][0-9]*)$/" class="form-control" placeholder="1209600">
                     </div>
                     <div class="form-group">
-                        <label>Groups that have access to start the template</label>
-                        <ul class="list-group">
+                        <label style="display:block">Groups that have access to start the template</label>
+                        <ul class="list-group" data-ng-show="templateSettings.groups.length > 0">
                             <li class="list-group-item" data-ng-repeat="group in templateSettings.groups">
                                 {{group.description}} ({{group.name}}) <button data-ng-click="templateSettings.groups.splice($index, 1)" type="button" class="close" aria-label="Close"><span aria-hidden="true">×</span></button>
                             </li>

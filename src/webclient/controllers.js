@@ -764,6 +764,9 @@
 
             //Transforms the commands into readable strings used in the UML boxes
             function commandToString(Command){
+                if(Command.library == null || Command.command == null)
+                    return "undefined command";
+
                 var commandText;
                 var commands = [];
                 commands.push((Command.library.indexOf("xlib_") != -1 ? Command.library.replace("xlib_","") : Command.library) + "->" + Command.command);
@@ -969,13 +972,15 @@
                 for(var i = 0; i < commands.length; i++){
                     libName = commands[i].library;
                     commandName = commands[i].command;
-                    for(var y = 0; y < commands[i].args.length; y++){
-                        if(isArgSchema(Step, libName, commandName, y)){
-                            for(var j = 0; j < commands[i].args[y].variables.length; j++){
-                                //vars[commands[i].args[y].variables[j].vid] = commands[i].args[y].variables[j];
-                                vars[commands[i].args[y].variables[j].name] = commands[i].args[y].variables[j];
+                    if(commands[i].args != null){
+                        for(var y = 0; y < commands[i].args.length; y++){
+                            if(isArgSchema(Step, libName, commandName, y)){
+                                for(var j = 0; j < commands[i].args[y].variables.length; j++){
+                                    //vars[commands[i].args[y].variables[j].vid] = commands[i].args[y].variables[j];
+                                    vars[commands[i].args[y].variables[j].name] = commands[i].args[y].variables[j];
+                                }
+                                //vars = vars.concat(commands[i].args[y].variables);
                             }
-                            //vars = vars.concat(commands[i].args[y].variables);
                         }
                     }
                 }
